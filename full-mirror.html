@@ -19,8 +19,8 @@
       display: block;
       border-radius: 20px; /* Bordes redondeados para estética */
       box-shadow: 0 0 30px rgba(255, 255, 255, 0.2); /* Sombra suave */
-      max-width: 50vw; /* Más ancho pero priorizando vertical */
-      max-height: 90vh;
+      max-width: 70vw; /* Más grande para full body */
+      max-height: 95vh;
       width: auto;
       height: auto;
     }
@@ -37,8 +37,9 @@
       text-align: center;
       backdrop-filter: blur(10px); /* Efecto glassmorphism para modernidad */
       box-shadow: 0 4px 20px rgba(0, 0, 0, 0.5);
+      max-width: 400px;
     }
-    #startBtn, #toggleDistortionBtn {
+    #startBtn, #toggleDistortionBtn, #switchCameraBtn {
       padding: 12px 24px;
       background: linear-gradient(45deg, #4CAF50, #45a049); /* Verde elegante */
       border: none;
@@ -48,14 +49,19 @@
       border-radius: 25px;
       margin: 10px 0;
       transition: transform 0.2s, box-shadow 0.2s;
-      width: 220px;
+      width: 280px;
     }
-    #startBtn:hover, #toggleDistortionBtn:hover {
+    #switchCameraBtn {
+      background: linear-gradient(45deg, #FF9800, #F57C00); /* Naranja para alternar */
+      width: 280px;
+      display: none;
+    }
+    #startBtn:hover, #toggleDistortionBtn:hover, #switchCameraBtn:hover {
       transform: scale(1.05);
       box-shadow: 0 4px 15px rgba(76, 175, 80, 0.4);
     }
     #distortionSlider {
-      width: 220px;
+      width: 280px;
       margin: 15px auto;
       height: 6px;
       border-radius: 3px;
@@ -77,9 +83,9 @@
       color: #4CAF50;
     }
     #status {
-      font-size: 14px;
+      font-size: 16px; /* Más grande para visibilidad */
       margin: 10px 0;
-      padding: 8px;
+      padding: 10px;
       background: rgba(255, 255, 0, 0.2);
       border-radius: 10px;
       min-height: 20px;
@@ -92,8 +98,9 @@
 </head>
 <body>
 <div id="controls">
-  <button id="startBtn">Activar Cámara Trasera</button>
-  <div id="status">Estado: Listo. Haz clic para solicitar permiso a la cámara.</div>
+  <button id="startBtn">Activar Cámara Trasera (Full Body Mirror)</button>
+  <button id="switchCameraBtn">Cambiar a Cámara Frontal</button>
+  <div id="status">Estado: Listo. Haz clic para solicitar permiso a la cámara. Asegúrate de usar Chrome/Firefox y un servidor local (Live Server).</div>
   <button id="toggleDistortionBtn" class="hidden">Activar Distorsión</button>
   <label for="distortionSlider" class="hidden" style="font-size: 16px; margin: 10px 0;">Intensidad de Distorsión (en tu cuerpo como espejo):</label>
   <input type="range" id="distortionSlider" min="0" max="0.1" step="0.005" value="0" class="hidden">
@@ -151,16 +158,17 @@ let simpleShader;
 let started = false;
 let useDistortion = false;
 let distortionIntensity = 0.0;
+let useRearCamera = true; // True para trasera, false para frontal
 let myCanvas;
 
 function setup() {
-  // Canvas vertical para full body mirror: más alto que ancho, centrado y responsivo
-  let canvasW = min(windowWidth * 0.4, 500); // Ancho moderado
-  let canvasH = min(windowHeight * 0.8, 800); // Altura mayor para vertical/full body
-  myCanvas = createCanvas(canvasW, canvasH, WEBGL); // Siempre WEBGL para consistencia (no recrear)
+  // Canvas más grande y vertical para full body mirror: priorizando tamaño grande y centrado
+  let canvasW = min(windowWidth * 0.6, 700); // Más ancho (60% de ventana, max 700px)
+  let canvasH = min(windowHeight * 0.9, 900); // Casi full height para vertical/full body
+  myCanvas = createCanvas(canvasW, canvasH, WEBGL); // Siempre WEBGL para consistencia
   myCanvas.style('display', 'block');
 
-  // Centrar canvas con CSS (body flex ya lo hace, pero asegurar)
+  // Centrar canvas
   myCanvas.position((windowWidth - canvasW) / 2, (windowHeight - canvasH) / 2);
 
   // Proyección ortográfica para full-screen sin perspectiva
@@ -185,29 +193,34 @@ function setup() {
 
   // Controles
   select("#startBtn").mousePressed(startCamera);
+  select("#switchCameraBtn").mousePressed(switchCamera);
   select("#toggleDistortionBtn").mousePressed(toggleDistortion);
 
   let slider = select("#distortionSlider");
   slider.input(updateDistortion);
 
-  updateStatus("Estado: Listo. Haz clic en 'Activar Cámara Trasera' para ver tu reflejo full body vertical.");
+  updateStatus("Estado: Listo. Haz clic en 'Activar Cámara Trasera' para ver tu reflejo full body vertical. Si falla, usa 'Cambiar a Cámara Frontal'.");
 }
 
 function startCamera() {
-  updateStatus("Estado: Solicitando permiso para cámara trasera... Acepta en el popup del navegador.");
+  updateStatus("Estado: Solicitando permiso para cámara... Acepta en el popup del navegador.");
 
+  const facingMode = useRearCamera ? { ideal: "environment" } : { ideal: "user" };
   const constraints = {
     video: {
-      facingMode: { ideal: "environment" }, // Prioridad a cámara trasera para efecto espejo
-      width: { ideal: 480 }, // Ajustado para vertical (más ancho que alto? No, video es landscape, pero canvas vertical lo estira)
+      facingMode: facingMode, // Ideal para fallback si no disponible
+      width: { ideal: 480 },
       height: { ideal: 640 }, // Altura mayor para full body vertical
       frameRate: { ideal: 30 }
     },
     audio: false
   };
 
+  if (cam) {
+    cam.remove(); // Limpiar si existe
+  }
   cam = createCapture(constraints, onCameraSuccess, onCameraError);
-  cam.size(width, height); // Ajustar a canvas vertical
+  cam.size(width, height); // Ajustar a canvas grande
   cam.hide();
 
   // Forzar play
@@ -219,27 +232,54 @@ function startCamera() {
 
   started = true;
   select("#startBtn").addClass("hidden");
+  select("#switchCameraBtn").removeClass("hidden");
   select("#toggleDistortionBtn").removeClass("hidden");
   select("#distortionSlider").removeClass("hidden");
   select("#distortionSlider").elt.previousElementSibling.removeClass("hidden"); // Label
   select("#distortionValue").removeClass("hidden");
 }
 
+function switchCamera() {
+  useRearCamera = !useRearCamera;
+  const cameraType = useRearCamera ? "trasera" : "frontal";
+  updateStatus(`Estado: Cambiando a cámara ${cameraType}... Reintenta activación.`);
+  select("#startBtn").removeClass("hidden");
+  select("#switchCameraBtn").html(useRearCamera ? "Cambiar a Cámara Frontal" : "Cambiar a Cámara Trasera");
+  if (cam) {
+    cam.remove();
+    cam = null;
+    started = false;
+  }
+  // Ocultar controles de distorsión al switch
+  select("#toggleDistortionBtn").addClass("hidden");
+  select("#distortionSlider").addClass("hidden");
+  select("#distortionSlider").elt.previousElementSibling.addClass("hidden");
+  select("#distortionValue").addClass("hidden");
+}
+
 function onCameraSuccess() {
-  console.log("Cámara trasera activada exitosamente! Resolución:", cam.width, "x", cam.height);
-  updateStatus("Estado: ¡Permiso concedido! Reflejo full body vertical en el centro. Activa distorsión para efecto ondulado en tu cuerpo.");
+  const cameraType = useRearCamera ? "trasera" : "frontal";
+  console.log(`Cámara ${cameraType} activada exitosamente! Resolución:`, cam.width, "x", cam.height);
+  updateStatus(`Estado: ¡Permiso concedido con cámara ${cameraType}! Reflejo full body vertical grande en el centro. Activa distorsión para efecto ondulado en tu cuerpo.`);
   cam.loop();
   useDistortion = false; // Empezar sin distorsión (usa simpleShader)
 }
 
 function onCameraError(error) {
   console.error("Error cámara:", error.name, error.message);
-  let msg = "Error: No se pudo acceder a la cámara trasera. ";
-  if (error.name === "NotAllowedError") msg += "Permiso denegado. Revisa y acepta.";
-  else if (error.name === "NotFoundError") msg += "No hay cámara trasera disponible. Prueba frontal cambiando 'environment' a 'user' en el código.";
-  else msg += "Intenta en Chrome/Firefox con HTTPS/localhost.";
-  updateStatus("Estado: " + msg);
-  select("#startBtn").removeClass("hidden"); // Permitir reintento
+  let msg = "";
+  if (error.name === "NotAllowedError") {
+    msg = "Permiso denegado. Revisa y acepta en el navegador.";
+  } else if (error.name === "NotFoundError") {
+    msg = "Cámara no encontrada. Prueba cambiando a frontal/trasera con el botón. Asegúrate de que el dispositivo tenga cámara.";
+  } else if (error.name === "NotReadableError") {
+    msg = "Cámara en uso por otra app. Cierra otras apps y reintenta.";
+  } else {
+    msg = "Error desconocido. Intenta en Chrome/Firefox con HTTPS o servidor local (Live Server en VSCode).";
+  }
+  updateStatus(`Estado: Error al acceder a la cámara: ${msg}`);
+  select("#startBtn").removeClass("hidden");
+  select("#switchCameraBtn").show(); // Mostrar botón para alternar
 }
 
 function toggleDistortion() {
@@ -249,7 +289,7 @@ function toggleDistortion() {
     updateStatus("Estado: Distorsión activada. Ajusta el slider para efecto ondulado vertical en tu cuerpo como espejo.");
   } else {
     select("#toggleDistortionBtn").html("Activar Distorsión");
-    updateStatus("Estado: Vista normal (sin distorsión). Reflejo full body claro en el centro.");
+    updateStatus("Estado: Vista normal (sin distorsión). Reflejo full body claro y grande en el centro.");
   }
 }
 
@@ -270,14 +310,14 @@ function draw() {
   background(0);
 
   if (!started || !cam || !cam.elt || cam.elt.videoWidth === 0) {
-    // Mensaje centrado elegante
+    // Mensaje centrado más grande y visible
     push();
     resetMatrix();
     ortho();
     fill(255);
     textAlign(CENTER);
-    textSize(18);
-    text("Solicitando acceso a cámara...\n(Asegúrate de aceptar el permiso y posicionarte frente al espejo)", 0, 0);
+    textSize(24); // Más grande para visibilidad
+    text("Solicitando acceso a cámara...\n(Asegúrate de aceptar el permiso, usar servidor local y posicionarte frente al espejo)", 0, 0);
     pop();
     return;
   }
@@ -296,16 +336,16 @@ function draw() {
     currentShader.setUniform("distortionIntensity", distortionIntensity);
   }
 
-  // Dibujar plane vertical full en canvas
+  // Dibujar plane vertical full en canvas grande
   plane(width, height);
 
   resetShader();
 }
 
 function windowResized() {
-  // Recalcular dimensiones verticales
-  let canvasW = min(windowWidth * 0.4, 500);
-  let canvasH = min(windowHeight * 0.8, 800);
+  // Recalcular dimensiones más grandes y verticales
+  let canvasW = min(windowWidth * 0.6, 700);
+  let canvasH = min(windowHeight * 0.9, 900);
   resizeCanvas(canvasW, canvasH);
   myCanvas.position((windowWidth - canvasW) / 2, (windowHeight - canvasH) / 2);
   if (started && cam) {
@@ -316,4 +356,3 @@ function windowResized() {
 </script>
 </body>
 </html>
-
