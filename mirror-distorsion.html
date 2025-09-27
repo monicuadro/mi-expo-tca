@@ -1,0 +1,88 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <title>Espejo Distorsionado</title>
+  <style>
+    body, html {
+      margin: 0;
+      padding: 0;
+      overflow: hidden;
+      background: black;
+    }
+    canvas {
+      display: block;
+    }
+  </style>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/p5.js/1.9.0/p5.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/p5.js/1.9.0/addons/p5.dom.min.js"></script>
+</head>
+<body>
+<script id="fragShader" type="x-shader/x-fragment">
+#ifdef GL_ES
+precision mediump float;
+#endif
+
+uniform sampler2D tex0;
+uniform vec2 resolution;
+uniform float time;
+
+void main() {
+  vec2 uv = gl_FragCoord.xy / resolution.xy;
+
+  // Distorsión ondulante en todo el cuerpo
+  uv.x += 0.03 * sin(uv.y * 10.0 + time * 2.0);
+  uv.y += 0.03 * cos(uv.x * 10.0 + time * 1.5);
+
+  vec3 col = texture2D(tex0, uv).rgb;
+  gl_FragColor = vec4(col, 1.0);
+}
+</script>
+
+<script>
+let cam;
+let shaderProgram;
+
+function setup() {
+  createCanvas(windowWidth, windowHeight, WEBGL);
+
+  // Cámara trasera (si está disponible en el móvil)
+  const constraints = {
+    video: {
+      facingMode: { exact: "environment" } // "user" para la frontal
+    },
+    audio: false
+  };
+
+  cam = createCapture(constraints, function(stream) {
+    console.log("Cámara trasera activada:", stream);
+  });
+  cam.size(width, height);
+  cam.hide();
+
+  shaderProgram = createShader(vertShader(), document.getElementById("fragShader").textContent);
+  noStroke();
+}
+
+function draw() {
+  shader(shaderProgram);
+  shaderProgram.setUniform("tex0", cam);
+  shaderProgram.setUniform("resolution", [width, height]);
+  shaderProgram.setUniform("time", millis() / 1000.0);
+  rect(-width/2, -height/2, width, height);
+}
+
+function vertShader() {
+  return `
+  attribute vec3 aPosition;
+  attribute vec2 aTexCoord;
+  varying vec2 vTexCoord;
+  void main() {
+    vTexCoord = aTexCoord;
+    gl_Position = vec4(aPosition, 1.0);
+  }
+  `;
+}
+</script>
+</body>
+</html>
