@@ -1,0 +1,257 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <title>Espejo Distorsionado</title>
+  <style>
+    body, html {
+      margin: 0;
+      padding: 0;
+      overflow: hidden;
+      background: black;
+      height: 100vh;
+    }
+    canvas {
+      display: block;
+      position: fixed;
+      top: 0;
+      left: 0;
+      z-index: 1;
+    }
+    #controls {
+      position: fixed;
+      top: 20px;
+      left: 20px;
+      z-index: 20;
+      background: rgba(0,0,0,0.7);
+      padding: 15px;
+      border-radius: 10px;
+      color: white;
+      font-family: Arial, sans-serif;
+    }
+    #startBtn, #toggleShaderBtn {
+      padding: 10px 20px;
+      background: rgba(255,255,255,0.8);
+      border: none;
+      font-size: 16px;
+      cursor: pointer;
+      border-radius: 5px;
+      margin: 5px 0;
+      display: block;
+      width: 100%;
+    }
+    #distortionSlider {
+      width: 100%;
+      margin: 10px 0;
+    }
+    #distortionValue {
+      font-size: 14px;
+      text-align: center;
+    }
+    label {
+      display: block;
+      margin-bottom: 5px;
+    }
+  </style>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/p5.js/1.9.0/p5.min.js"></script>
+</head>
+<body>
+<div id="controls">
+  <button id="startBtn">Activar Cámara</button>
+  <button id="toggleShaderBtn" style="display: none;">Desactivar Distorsión</button>
+  <label for="distortionSlider">Intensidad de Distorsión (ajusta para más/menos efecto):</label>
+  <input type="range" id="distortionSlider" min="0" max="0.1" step="0.01" value="0.02">
+  <div id="distortionValue">Intensidad: 0.02</div>
+</div>
+
+<script id="fragShader" type="x-shader/x-fragment">
+#ifdef GL_ES
+precision mediump float;
+#endif
+
+uniform sampler2D tex0;
+uniform vec2 resolution;
+uniform float time;
+uniform float distortionIntensity;
+
+void main() {
+  vec2 uv = gl_FragCoord.xy / resolution.xy;
+
+  // Distorsión ondulada ajustable
+  float distortionX = distortionIntensity * sin(uv.y * 10.0 + time * 2.0);
+  float distortionY = distortionIntensity * cos(uv.x * 10.0 + time * 1.5);
+  uv.x = clamp(uv.x + distortionX, 0.0, 1.0);
+  uv.y = clamp(uv.y + distortionY, 0.0, 1.0);
+
+  vec3 col = texture2D(tex0, uv).rgb;
+  gl_FragColor = vec4(col, 1.0);
+}
+</script>
+
+<script id="simpleFragShader" type="x-shader/x-fragment">
+#ifdef GL_ES
+precision mediump float;
+#endif
+
+uniform sampler2D tex0;
+uniform vec2 resolution;
+
+void main() {
+  vec2 uv = gl_FragCoord.xy / resolution.xy;
+  vec3 col = texture2D(tex0, uv).rgb;
+  gl_FragColor = vec4(col, 1.0);
+}
+</script>
+
+<script>
+let cam;
+let shaderProgram;
+let simpleShaderProgram;
+let started = false;
+let useDistortion = false;
+let distortionIntensity = 0.02;
+
+function setup() {
+  let cnv = createCanvas(windowWidth, windowHeight, WEBGL);
+  cnv.style('display', 'block');
+
+  // Proyección ortográfica para full-screen sin distorsión de perspectiva
+  ortho(-width / 2, width / 2, height / 2, -height / 2, 0, 100);
+
+  // Shader con distorsión
+  let vertSource = `
+    attribute vec3 aPosition;
+    attribute vec2 aTexCoord;
+    varying vec2 vTexCoord;
+    uniform mat4 uProjectionMatrix;
+    uniform mat4 uModelViewMatrix;
+    void main() {
+      vTexCoord = aTexCoord;
+      gl_Position = uProjectionMatrix * uModelViewMatrix * vec4(aPosition, 1.0);
+    }
+  `;
+
+  shaderProgram = createShader(vertSource, document.getElementById("fragShader").textContent);
+  simpleShaderProgram = createShader(vertSource, document.getElementById("simpleFragShader").textContent);
+
+  noStroke();
+
+  // Controles
+  let startBtn = select("#startBtn");
+  startBtn.mousePressed(startCamera);
+
+  let toggleBtn = select("#toggleShaderBtn");
+  toggleBtn.mousePressed(toggleDistortion);
+
+  let slider = select("#distortionSlider");
+  slider.input(updateDistortion);
+
+  updateDistortion(); // Inicializar valor
+}
+
+function startCamera() {
+  const constraints = {
+    video: {
+      facingMode: { ideal: "environment" }, // Cambié a 'ideal' para mejor compatibilidad (fallback si no hay trasera)
+      width: { ideal: windowWidth, max: 1920 },
+      height: { ideal: windowHeight, max: 1080 },
+      frameRate: { ideal: 30 }
+    },
+    audio: false
+  };
+
+  cam = createCapture(constraints, () => {
+    console.log("Cámara activada. Resolución:", cam.width, "x", cam.height);
+    cam.play();
+    cam.loop(); // Asegurar loop continuo
+  });
+  cam.size(windowWidth, windowHeight);
+  cam.hide();
+
+  started = true;
+  select("#startBtn").hide();
+  select("#toggleShaderBtn").show();
+  select("#distortionSlider").parent().show(); // Mostrar controles de distorsión
+}
+
+function toggleDistortion() {
+  useDistortion = !useDistortion;
+  select("#toggleShaderBtn").html(useDistortion ? "Desactivar Distorsión" : "Activar Distorsión");
+  console.log("Distorsión:", useDistortion ? "Activada" : "Desactivada");
+}
+
+function updateDistortion() {
+  distortionIntensity = parseFloat(select("#distortionSlider").value());
+  select("#distortionValue").html("Intensidad: " + distortionIntensity.toFixed(2));
+  if (useDistortion && started) {
+    shaderProgram.setUniform("distortionIntensity", distortionIntensity);
+  }
+}
+
+function draw() {
+  background(0);
+
+  if (!started || !cam || cam.width === 0 || !cam.loadedmetadata) {
+    // Mostrar mensaje de carga si no está lista
+    push();
+    resetMatrix();
+    ortho();
+    textAlign(CENTER);
+    textSize(32);
+    fill(255);
+    text("Cargando cámara...", 0, 0);
+    pop();
+    return;
+  }
+
+  resetMatrix();
+
+  // Usar shader simple o con distorsión
+  let currentShader = useDistortion ? shaderProgram : simpleShaderProgram;
+  shader(currentShader);
+
+  // Set uniforms comunes
+  currentShader.setUniform("tex0", cam);
+  currentShader.setUniform("resolution", [width, height]);
+  if (useDistortion) {
+    currentShader.setUniform("time", millis() / 1000.0);
+    currentShader.setUniform("distortionIntensity", distortionIntensity);
+  }
+
+  // Dibujar quad full-screen manualmente para control preciso de UVs y posición
+  // Vertices: bottom-left, bottom-right, top-right, top-left
+  // Posiciones en coordenadas WEBGL (centrado en origen)
+  beginShape(QUADS);
+  // Bottom-left
+  vertex(-width/2, height/2, 0, 0, 1);  // x, y, z, u, v
+  // Bottom-right
+  vertex(width/2, height/2, 0, 1, 1);
+  // Top-right
+  vertex(width/2, -height/2, 0, 1, 0);
+  // Top-left
+  vertex(-width/2, -height/2, 0, 0, 0);
+  endShape();
+
+  // Reset shader para no afectar otros draws futuros
+  resetShader();
+}
+
+function windowResized() {
+  resizeCanvas(windowWidth, windowHeight);
+  if (started && cam) {
+    cam.size(windowWidth, windowHeight);
+  }
+  // Reaplicar proyección
+  ortho(-width / 2, width / 2, height / 2, -height / 2, 0, 100);
+}
+
+// Función para depuración: presiona 'D' para toggle debug (muestra cámara sin WEBGL)
+function keyPressed() {
+  if (key === 'D' || key === 'd') {
+    // Para debug, puedes agregar aquí un modo 2D temporal, pero por ahora log
+    console.log("Debug: Cámara lista?", cam && cam.width > 0);
+  }
+}
+</script>
+</body>
+</html>
