@@ -17,6 +17,9 @@
     }
     canvas {
       display: block;
+      position: absolute;
+      top: 0;
+      left: 0;
     }
     #startBtn {
       position: absolute;
@@ -47,9 +50,11 @@ uniform float time;
 void main() {
   vec2 uv = gl_FragCoord.xy / resolution.xy;
 
-  // Distorsión ondulada
-  uv.x += 0.05 * sin(uv.y * 10.0 + time * 2.0);
-  uv.y += 0.05 * cos(uv.x * 10.0 + time * 1.5);
+  // Distorsión ondulada (amplitud reducida para menos difuminado)
+  float distortionX = 0.02 * sin(uv.y * 10.0 + time * 2.0);
+  float distortionY = 0.02 * cos(uv.x * 10.0 + time * 1.5);
+  uv.x = clamp(uv.x + distortionX, 0.0, 1.0);
+  uv.y = clamp(uv.y + distortionY, 0.0, 1.0);
 
   vec3 col = texture2D(tex0, uv).rgb;
   gl_FragColor = vec4(col, 1.0);
@@ -64,8 +69,11 @@ let started = false;
 function setup() {
   let cnv = createCanvas(windowWidth, windowHeight, WEBGL);
   cnv.style('display', 'block');
+  cnv.position(0, 0); // Asegurar posición absoluta en la esquina superior izquierda
 
-  // Vertex shader corregido: incluye matrices de proyección y modelo para renderizado correcto en WEBGL
+  // Proyección ortográfica para cubrir exactamente el viewport (evita distorsiones de perspectiva)
+  ortho(-width / 2, width / 2, height / 2, -height / 2, 0, 1);
+
   let vertSource = `
     attribute vec3 aPosition;
     attribute vec2 aTexCoord;
@@ -88,42 +96,50 @@ function setup() {
 function startCamera() {
   const constraints = {
     video: {
-      facingMode: { exact: "environment" } // cámara trasera
+      facingMode: { exact: "environment" }, // cámara trasera
+      width: { ideal: windowWidth },
+      height: { ideal: windowHeight }
     },
     audio: false
   };
 
   cam = createCapture(constraints, () => {
     console.log("Cámara trasera activada");
+    cam.play(); // Asegurar que el video se reproduzca inmediatamente
   });
   cam.size(windowWidth, windowHeight);
   cam.hide();
+  cam.id('cameraVideo'); // ID para debugging si es necesario
 
   started = true;
   select("#startBtn").hide();
 }
 
 function draw() {
-  if (!started) {
+  if (!started || !cam || !cam.loadedmetadata) {
     background(0);
     return;
   }
 
-  // Resetear matrices para un quad full-screen
-  resetMatrix();
+  background(0); // Limpiar el fondo en cada frame
+  resetMatrix(); // Resetear transformaciones
 
+  // Usar plane() en lugar de rect() para un quad full-screen en WEBGL (mejor para texturas)
   shader(shaderProgram);
   shaderProgram.setUniform("tex0", cam);
   shaderProgram.setUniform("resolution", [width, height]);
   shaderProgram.setUniform("time", millis() / 1000.0);
 
-  rect(-width/2, -height/2, width, height);
+  // Dibujar el plane centrado en el origen, cubriendo todo el viewport
+  plane(width, height);
 }
 
 function windowResized() {
   resizeCanvas(windowWidth, windowHeight);
   if (started && cam) {
     cam.size(windowWidth, windowHeight);
+    // Reaplicar proyección ortográfica
+    ortho(-width / 2, width / 2, height / 2, -height / 2, 0, 1);
   }
 }
 
