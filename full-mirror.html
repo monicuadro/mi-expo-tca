@@ -2,7 +2,7 @@
 <html lang="es">
 <head>
   <meta charset="UTF-8">
-  <title>Espejo Distorsionado - Simple y Estético</title>
+  <title>Espejo Distorsionado - Full Body Vertical</title>
   <style>
     body, html {
       margin: 0;
@@ -19,8 +19,10 @@
       display: block;
       border-radius: 20px; /* Bordes redondeados para estética */
       box-shadow: 0 0 30px rgba(255, 255, 255, 0.2); /* Sombra suave */
-      max-width: 90vw;
+      max-width: 50vw; /* Más ancho pero priorizando vertical */
       max-height: 90vh;
+      width: auto;
+      height: auto;
     }
     #controls {
       position: absolute;
@@ -46,14 +48,14 @@
       border-radius: 25px;
       margin: 10px 0;
       transition: transform 0.2s, box-shadow 0.2s;
-      width: 200px;
+      width: 220px;
     }
     #startBtn:hover, #toggleDistortionBtn:hover {
       transform: scale(1.05);
       box-shadow: 0 4px 15px rgba(76, 175, 80, 0.4);
     }
     #distortionSlider {
-      width: 200px;
+      width: 220px;
       margin: 15px auto;
       height: 6px;
       border-radius: 3px;
@@ -112,10 +114,10 @@ void main() {
   vec2 uv = gl_FragCoord.xy / resolution.xy;
   uv.y = 1.0 - uv.y; // Flip Y para orientación correcta en video
 
-  // Distorsión ondulada suave, enfocada en movimiento corporal (ondas en X/Y)
-  float waveX = distortionIntensity * sin(uv.y * 15.0 + time * 3.0); // Más frecuencia para efecto en cuerpo
-  float waveY = distortionIntensity * cos(uv.x * 12.0 + time * 2.5);
-  uv.x += waveX;
+  // Distorsión ondulada suave, enfocada en movimiento corporal (ondas en X/Y, más vertical para full body)
+  float waveX = distortionIntensity * sin(uv.y * 20.0 + time * 3.0); // Mayor frecuencia en Y para efecto vertical en cuerpo
+  float waveY = distortionIntensity * cos(uv.x * 15.0 + time * 2.5);
+  uv.x += waveX * 0.5; // Reducir en X para menos distorsión horizontal
   uv.y += waveY;
   uv.x = clamp(uv.x, 0.0, 1.0);
   uv.y = clamp(uv.y, 0.0, 1.0);
@@ -125,22 +127,46 @@ void main() {
 }
 </script>
 
+<script id="simpleFragShader" type="x-shader/x-fragment">
+#ifdef GL_ES
+precision mediump float;
+#endif
+
+uniform sampler2D tex0;
+uniform vec2 resolution;
+
+void main() {
+  vec2 uv = gl_FragCoord.xy / resolution.xy;
+  uv.y = 1.0 - uv.y; // Flip Y para orientación correcta
+
+  vec3 col = texture2D(tex0, uv).rgb;
+  gl_FragColor = vec4(col, 1.0);
+}
+</script>
+
 <script>
 let cam;
-let shaderProgram;
+let distortionShader;
+let simpleShader;
 let started = false;
 let useDistortion = false;
 let distortionIntensity = 0.0;
-let useWEBGL = false; // Empezar en 2D simple para asegurar visibilidad
 let myCanvas;
 
 function setup() {
-  // Canvas centrado y responsivo
-  myCanvas = createCanvas(min(windowWidth, 800), min(windowHeight, 600)); // Tamaño fijo max para estética, centrado por CSS
+  // Canvas vertical para full body mirror: más alto que ancho, centrado y responsivo
+  let canvasW = min(windowWidth * 0.4, 500); // Ancho moderado
+  let canvasH = min(windowHeight * 0.8, 800); // Altura mayor para vertical/full body
+  myCanvas = createCanvas(canvasW, canvasH, WEBGL); // Siempre WEBGL para consistencia (no recrear)
   myCanvas.style('display', 'block');
-  myCanvas.position((windowWidth - width) / 2, (windowHeight - height) / 2); // Centrar manualmente
 
-  // Inicializar shader solo si se activa WEBGL
+  // Centrar canvas con CSS (body flex ya lo hace, pero asegurar)
+  myCanvas.position((windowWidth - canvasW) / 2, (windowHeight - canvasH) / 2);
+
+  // Proyección ortográfica para full-screen sin perspectiva
+  ortho(-canvasW / 2, canvasW / 2, canvasH / 2, -canvasH / 2, 0.1, 100);
+
+  // Shaders: simple y distorsionado
   let vertSource = `
     attribute vec3 aPosition;
     attribute vec2 aTexCoord;
@@ -152,11 +178,10 @@ function setup() {
       gl_Position = uProjectionMatrix * uModelViewMatrix * vec4(aPosition, 1.0);
     }
   `;
-  shaderProgram = createShader(vertSource, document.getElementById("fragShader").textContent);
+  distortionShader = createShader(vertSource, document.getElementById("fragShader").textContent);
+  simpleShader = createShader(vertSource, document.getElementById("simpleFragShader").textContent);
 
   noStroke();
-  textAlign(CENTER);
-  textSize(20);
 
   // Controles
   select("#startBtn").mousePressed(startCamera);
@@ -165,7 +190,7 @@ function setup() {
   let slider = select("#distortionSlider");
   slider.input(updateDistortion);
 
-  updateStatus("Estado: Listo. Haz clic en 'Activar Cámara Trasera' para ver tu reflejo distorsionado.");
+  updateStatus("Estado: Listo. Haz clic en 'Activar Cámara Trasera' para ver tu reflejo full body vertical.");
 }
 
 function startCamera() {
@@ -174,15 +199,15 @@ function startCamera() {
   const constraints = {
     video: {
       facingMode: { ideal: "environment" }, // Prioridad a cámara trasera para efecto espejo
-      width: { ideal: 640 },
-      height: { ideal: 480 },
+      width: { ideal: 480 }, // Ajustado para vertical (más ancho que alto? No, video es landscape, pero canvas vertical lo estira)
+      height: { ideal: 640 }, // Altura mayor para full body vertical
       frameRate: { ideal: 30 }
     },
     audio: false
   };
 
   cam = createCapture(constraints, onCameraSuccess, onCameraError);
-  cam.size(width, height);
+  cam.size(width, height); // Ajustar a canvas vertical
   cam.hide();
 
   // Forzar play
@@ -201,44 +226,30 @@ function startCamera() {
 }
 
 function onCameraSuccess() {
-  console.log("Cámara trasera activada exitosamente!");
-  updateStatus("Estado: ¡Permiso concedido! Ahora ves tu reflejo en el centro. Activa distorsión para efecto en tu cuerpo.");
+  console.log("Cámara trasera activada exitosamente! Resolución:", cam.width, "x", cam.height);
+  updateStatus("Estado: ¡Permiso concedido! Reflejo full body vertical en el centro. Activa distorsión para efecto ondulado en tu cuerpo.");
   cam.loop();
-  useWEBGL = false; // Mantener 2D inicialmente para visibilidad inmediata
-  redraw(); // Forzar redraw
+  useDistortion = false; // Empezar sin distorsión (usa simpleShader)
 }
 
 function onCameraError(error) {
   console.error("Error cámara:", error.name, error.message);
   let msg = "Error: No se pudo acceder a la cámara trasera. ";
   if (error.name === "NotAllowedError") msg += "Permiso denegado. Revisa y acepta.";
-  else if (error.name === "NotFoundError") msg += "No hay cámara trasera disponible. Prueba frontal cambiando 'environment' a 'user'.";
+  else if (error.name === "NotFoundError") msg += "No hay cámara trasera disponible. Prueba frontal cambiando 'environment' a 'user' en el código.";
   else msg += "Intenta en Chrome/Firefox con HTTPS/localhost.";
   updateStatus("Estado: " + msg);
-  select("#startBtn").show(); // Permitir reintento
+  select("#startBtn").removeClass("hidden"); // Permitir reintento
 }
 
 function toggleDistortion() {
   useDistortion = !useDistortion;
-  useWEBGL = useDistortion; // Solo activar WEBGL cuando se usa distorsión
-
-  if (useWEBGL) {
-    // Switch a WEBGL
-    myCanvas.remove();
-    myCanvas = createCanvas(min(windowWidth, 800), min(windowHeight, 600), WEBGL);
-    myCanvas.style('display', 'block');
-    myCanvas.position((windowWidth - width) / 2, (windowHeight - height) / 2);
-    ortho(-width / 2, width / 2, height / 2, -height / 2, 0.1, 100);
+  if (useDistortion) {
     select("#toggleDistortionBtn").html("Desactivar Distorsión (Volver a Normal)");
-    updateStatus("Estado: Distorsión activada en WEBGL. Ajusta el slider para efecto ondulado en tu cuerpo.");
+    updateStatus("Estado: Distorsión activada. Ajusta el slider para efecto ondulado vertical en tu cuerpo como espejo.");
   } else {
-    // Switch a 2D normal
-    myCanvas.remove();
-    myCanvas = createCanvas(min(windowWidth, 800), min(windowHeight, 600));
-    myCanvas.style('display', 'block');
-    myCanvas.position((windowWidth - width) / 2, (windowHeight - height) / 2);
     select("#toggleDistortionBtn").html("Activar Distorsión");
-    updateStatus("Estado: Vista normal (sin distorsión). Tu reflejo claro en el centro.");
+    updateStatus("Estado: Vista normal (sin distorsión). Reflejo full body claro en el centro.");
   }
 }
 
@@ -246,7 +257,7 @@ function updateDistortion() {
   distortionIntensity = parseFloat(select("#distortionSlider").value());
   select("#distortionValue").html("Intensidad: " + distortionIntensity.toFixed(2));
   if (useDistortion && started) {
-    shaderProgram.setUniform("distortionIntensity", distortionIntensity);
+    distortionShader.setUniform("distortionIntensity", distortionIntensity);
   }
 }
 
@@ -260,39 +271,47 @@ function draw() {
 
   if (!started || !cam || !cam.elt || cam.elt.videoWidth === 0) {
     // Mensaje centrado elegante
+    push();
+    resetMatrix();
+    ortho();
     fill(255);
-    text("Solicitando acceso a cámara...\n(Asegúrate de aceptar el permiso)", 0, 0);
+    textAlign(CENTER);
+    textSize(18);
+    text("Solicitando acceso a cámara...\n(Asegúrate de aceptar el permiso y posicionarte frente al espejo)", 0, 0);
+    pop();
     return;
   }
 
-  if (useWEBGL) {
-    // Modo distorsionado
-    resetMatrix();
-    shader(shaderProgram);
-    shaderProgram.setUniform("tex0", cam);
-    shaderProgram.setUniform("resolution", [width, height]);
-    shaderProgram.setUniform("time", millis() / 1000.0);
-    shaderProgram.setUniform("distortionIntensity", distortionIntensity);
-    plane(width, height);
-    resetShader();
-  } else {
-    // Modo simple 2D: cámara cruda centrada
-    image(cam, -width/2, -height/2, width, height); // Centrado en canvas
+  // Siempre WEBGL, switch entre shaders para mantener textura consistente
+  resetMatrix();
+  let currentShader = useDistortion ? distortionShader : simpleShader;
+  shader(currentShader);
+
+  // Set uniforms comunes
+  currentShader.setUniform("tex0", cam);
+  currentShader.setUniform("resolution", [width, height]);
+
+  if (useDistortion) {
+    currentShader.setUniform("time", millis() / 1000.0);
+    currentShader.setUniform("distortionIntensity", distortionIntensity);
   }
+
+  // Dibujar plane vertical full en canvas
+  plane(width, height);
+
+  resetShader();
 }
 
 function windowResized() {
-  // Recalcular posición centrada
-  let newW = min(windowWidth, 800);
-  let newH = min(windowHeight, 600);
-  resizeCanvas(newW, newH);
-  myCanvas.position((windowWidth - newW) / 2, (windowHeight - newH) / 2);
+  // Recalcular dimensiones verticales
+  let canvasW = min(windowWidth * 0.4, 500);
+  let canvasH = min(windowHeight * 0.8, 800);
+  resizeCanvas(canvasW, canvasH);
+  myCanvas.position((windowWidth - canvasW) / 2, (windowHeight - canvasH) / 2);
   if (started && cam) {
-    cam.size(newW, newH);
+    cam.size(canvasW, canvasH);
   }
-  if (useWEBGL) {
-    ortho(-newW / 2, newW / 2, newH / 2, -newH / 2, 0.1, 100);
-  }
+  ortho(-canvasW / 2, canvasW / 2, canvasH / 2, -canvasH / 2, 0.1, 100);
 }
 </script>
 </body>
