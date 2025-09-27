@@ -9,15 +9,32 @@
       padding: 0;
       overflow: hidden;
       background: black;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      height: 100vh;
     }
     canvas {
       display: block;
     }
+    #startBtn {
+      position: absolute;
+      top: 20px;
+      padding: 10px 20px;
+      background: rgba(255,255,255,0.8);
+      border: none;
+      font-size: 18px;
+      cursor: pointer;
+      border-radius: 5px;
+      z-index: 10;
+    }
   </style>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/p5.js/1.9.0/p5.min.js"></script>
-  <script src="https://cdnjs.cloudflare.com/ajax/libs/p5.js/1.9.0/addons/p5.dom.min.js"></script>
 </head>
 <body>
+<button id="startBtn">Activar Cámara</button>
+
 <script id="fragShader" type="x-shader/x-fragment">
 #ifdef GL_ES
 precision mediump float;
@@ -30,9 +47,9 @@ uniform float time;
 void main() {
   vec2 uv = gl_FragCoord.xy / resolution.xy;
 
-  // Distorsión ondulante en todo el cuerpo
-  uv.x += 0.03 * sin(uv.y * 10.0 + time * 2.0);
-  uv.y += 0.03 * cos(uv.x * 10.0 + time * 1.5);
+  // Distorsión ondulada
+  uv.x += 0.05 * sin(uv.y * 10.0 + time * 2.0);
+  uv.y += 0.05 * cos(uv.x * 10.0 + time * 1.5);
 
   vec3 col = texture2D(tex0, uv).rgb;
   gl_FragColor = vec4(col, 1.0);
@@ -42,34 +59,53 @@ void main() {
 <script>
 let cam;
 let shaderProgram;
+let started = false;
 
 function setup() {
-  createCanvas(windowWidth, windowHeight, WEBGL);
+  let cnv = createCanvas(windowWidth, windowHeight, WEBGL);
+  cnv.style('display', 'block');
 
-  // Cámara trasera (si está disponible en el móvil)
+  shaderProgram = createShader(vertShader(), document.getElementById("fragShader").textContent);
+  noStroke();
+
+  let btn = select("#startBtn");
+  btn.mousePressed(startCamera);
+}
+
+function startCamera() {
   const constraints = {
     video: {
-      facingMode: { exact: "environment" } // "user" para la frontal
+      facingMode: { exact: "environment" } // cámara trasera
     },
     audio: false
   };
 
-  cam = createCapture(constraints, function(stream) {
-    console.log("Cámara trasera activada:", stream);
+  cam = createCapture(constraints, () => {
+    console.log("Cámara trasera activada");
   });
-  cam.size(width, height);
+  cam.size(windowWidth, windowHeight);
   cam.hide();
 
-  shaderProgram = createShader(vertShader(), document.getElementById("fragShader").textContent);
-  noStroke();
+  started = true;
+  select("#startBtn").hide();
 }
 
 function draw() {
+  if (!started) {
+    background(0);
+    return;
+  }
+
   shader(shaderProgram);
   shaderProgram.setUniform("tex0", cam);
   shaderProgram.setUniform("resolution", [width, height]);
   shaderProgram.setUniform("time", millis() / 1000.0);
+
   rect(-width/2, -height/2, width, height);
+}
+
+function windowResized() {
+  resizeCanvas(windowWidth, windowHeight);
 }
 
 function vertShader() {
