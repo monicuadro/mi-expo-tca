@@ -1,0 +1,349 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <title>Espejo Distorsionado</title>
+  <style>
+    body, html {
+      margin: 0;
+      padding: 0;
+      overflow: hidden;
+      background: black;
+      height: 100vh;
+    }
+    canvas {
+      display: block;
+      position: fixed;
+      top: 0;
+      left: 0;
+      z-index: 1;
+    }
+    #controls {
+      position: fixed;
+      top: 20px;
+      left: 20px;
+      z-index: 20;
+      background: rgba(0,0,0,0.7);
+      padding: 15px;
+      border-radius: 10px;
+      color: white;
+      font-family: Arial, sans-serif;
+      max-width: 300px;
+    }
+    #startBtn, #toggleShaderBtn, #debug2D, #retryBtn {
+      padding: 10px 20px;
+      background: rgba(255,255,255,0.8);
+      border: none;
+      font-size: 16px;
+      cursor: pointer;
+      border-radius: 5px;
+      margin: 5px 0;
+      display: block;
+      width: 100%;
+    }
+    #retryBtn {
+      background: rgba(255,0,0,0.8);
+      display: none;
+    }
+    #status {
+      font-size: 14px;
+      margin: 10px 0;
+      padding: 5px;
+      background: rgba(255,255,0,0.5);
+      border-radius: 3px;
+      text-align: center;
+    }
+    #distortionSlider {
+      width: 100%;
+      margin: 10px 0;
+    }
+    #distortionValue {
+      font-size: 14px;
+      text-align: center;
+    }
+    label {
+      display: block;
+      margin-bottom: 5px;
+    }
+  </style>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/p5.js/1.9.0/p5.min.js"></script>
+</head>
+<body>
+<div id="controls">
+  <button id="startBtn">Activar Cámara</button>
+  <button id="retryBtn">Reintentar Cámara</button>
+  <div id="status">Estado: Esperando activación...</div>
+  <button id="toggleShaderBtn" style="display: none;">Desactivar Distorsión</button>
+  <button id="debug2D" style="display: none; background: rgba(0,255,0,0.8);">Modo Debug 2D (Simple)</button>
+  <label for="distortionSlider" style="display: none;">Intensidad de Distorsión:</label>
+  <input type="range" id="distortionSlider" min="0" max="0.1" step="0.01" value="0.02" style="display: none;">
+  <div id="distortionValue" style="display: none;">Intensidad: 0.02</div>
+</div>
+
+<script id="fragShader" type="x-shader/x-fragment">
+#ifdef GL_ES
+precision mediump float;
+#endif
+
+uniform sampler2D tex0;
+uniform vec2 resolution;
+uniform float time;
+uniform float distortionIntensity;
+
+void main() {
+  vec2 uv = gl_FragCoord.xy / resolution.xy;
+  uv.y = 1.0 - uv.y; // Flip Y para video
+
+  float distortionX = distortionIntensity * sin(uv.y * 10.0 + time * 2.0);
+  float distortionY = distortionIntensity * cos(uv.x * 10.0 + time * 1.5);
+  uv.x = clamp(uv.x + distortionX, 0.0, 1.0);
+  uv.y = clamp(uv.y + distortionY, 0.0, 1.0);
+
+  vec3 col = texture2D(tex0, uv).rgb;
+  gl_FragColor = vec4(col, 1.0);
+}
+</script>
+
+<script id="simpleFragShader" type="x-shader/x-fragment">
+#ifdef GL_ES
+precision mediump float;
+#endif
+
+uniform sampler2D tex0;
+uniform vec2 resolution;
+
+void main() {
+  vec2 uv = gl_FragCoord.xy / resolution.xy;
+  uv.y = 1.0 - uv.y; // Flip Y para video
+
+  vec3 col = texture2D(tex0, uv).rgb;
+  gl_FragColor = vec4(col, 1.0);
+}
+</script>
+
+<script>
+let cam;
+let shaderProgram;
+let simpleShaderProgram;
+let started = false;
+let useDistortion = false;
+let distortionIntensity = 0.02;
+let useWEBGL = true;
+let myCanvas;
+
+function setup() {
+  myCanvas = createCanvas(windowWidth, windowHeight, WEBGL);
+  myCanvas.style('display', 'block');
+
+  ortho(-width / 2, width / 2, height / 2, -height / 2, 0.1, 100);
+
+  let vertSource = `
+    attribute vec3 aPosition;
+    attribute vec2 aTexCoord;
+    varying vec2 vTexCoord;
+    uniform mat4 uProjectionMatrix;
+    uniform mat4 uModelViewMatrix;
+    void main() {
+      vTexCoord = aTexCoord;
+      gl_Position = uProjectionMatrix * uModelViewMatrix * vec4(aPosition, 1.0);
+    }
+  `;
+
+  shaderProgram = createShader(vertSource, document.getElementById("fragShader").textContent);
+  simpleShaderProgram = createShader(vertSource, document.getElementById("simpleFragShader").textContent);
+
+  noStroke();
+
+  // Controles
+  select("#startBtn").mousePressed(startCamera);
+  select("#retryBtn").mousePressed(retryCamera);
+  select("#toggleShaderBtn").mousePressed(toggleDistortion);
+  select("#debug2D").mousePressed(toggleDebug2D);
+
+  let slider = select("#distortionSlider");
+  slider.input(updateDistortion);
+
+  updateStatus("Estado: Listo para activar cámara. Asegúrate de permitir acceso.");
+}
+
+function startCamera() {
+  updateStatus("Estado: Solicitando acceso a cámara...");
+
+  // Constraints simplificados: sin facingMode estricto, resolución baja para compatibilidad
+  const constraints = {
+    video: {
+      width: { ideal: 640 },
+      height: { ideal: 480 },
+      frameRate: { ideal: 30 }
+    },
+    audio: false
+  };
+
+  cam = createCapture(constraints, onCameraSuccess, onCameraError);
+  cam.size(width, height);
+  cam.hide();
+
+  // Forzar play después de un breve delay si no se activa automáticamente
+  setTimeout(() => {
+    if (cam && cam.elt) {
+      cam.elt.play().catch(e => {
+        console.error("Error al reproducir video:", e);
+        updateStatus("Error: No se pudo reproducir la cámara. Revisa permisos.");
+      });
+    }
+  }, 1000);
+
+  started = true;
+  select("#startBtn").hide();
+  select("#retryBtn").show();
+  select("#toggleShaderBtn").show();
+  select("#debug2D").show();
+  select("#distortionSlider").show();
+  select("#distortionSlider").parent().show();
+  select("#distortionValue").show();
+}
+
+function onCameraSuccess() {
+  console.log("Cámara activada exitosamente. Resolución:", cam.width, "x", cam.height);
+  if (cam.elt) {
+    console.log("Video element ready. Paused?", cam.elt.paused, "Ended?", cam.elt.ended);
+  }
+  updateStatus("Estado: Cámara activada. Debería verse en modo 2D.");
+  cam.loop(); // Asegurar loop
+}
+
+function onCameraError(error) {
+  console.error("Error en cámara:", error);
+  updateStatus("Error: No se pudo acceder a la cámara. Razones comunes: permisos denegados, no hay cámara, o navegador no soporta. Reintenta o prueba en Chrome/Firefox.");
+  select("#retryBtn").show();
+}
+
+function retryCamera() {
+  if (cam) {
+    cam.remove(); // Limpiar cámara anterior
+  }
+  started = false;
+  cam = null;
+  select("#startBtn").show();
+  select("#retryBtn").hide();
+  select("#toggleShaderBtn").hide();
+  select("#debug2D").hide();
+  select("#distortionSlider").hide();
+  select("#distortionSlider").parent().hide();
+  select("#distortionValue").hide();
+  updateStatus("Estado: Reintentando... Clic en Activar Cámara.");
+}
+
+function toggleDistortion() {
+  useDistortion = !useDistortion;
+  select("#toggleShaderBtn").html(useDistortion ? "Desactivar Distorsión" : "Activar Distorsión");
+}
+
+function updateDistortion() {
+  distortionIntensity = parseFloat(select("#distortionSlider").value());
+  select("#distortionValue").html("Intensidad: " + distortionIntensity.toFixed(2));
+  if (useDistortion && started && useWEBGL) {
+    shaderProgram.setUniform("distortionIntensity", distortionIntensity);
+  }
+}
+
+function toggleDebug2D() {
+  useWEBGL = !useWEBGL;
+  if (useWEBGL) {
+    myCanvas.remove();
+    myCanvas = createCanvas(windowWidth, windowHeight, WEBGL);
+    myCanvas.style('display', 'block');
+    ortho(-width / 2, width / 2, height / 2, -height / 2, 0.1, 100);
+    console.log("Modo WEBGL activado");
+  } else {
+    myCanvas.remove();
+    myCanvas = createCanvas(windowWidth, windowHeight);
+    myCanvas.style('display', 'block');
+    console.log("Modo 2D Debug activado - muestra cámara cruda");
+  }
+  select("#debug2D").html(useWEBGL ? "Modo Debug 2D (Simple)" : "Volver a WEBGL");
+}
+
+function updateStatus(msg) {
+  select("#status").html(msg);
+  console.log(msg);
+}
+
+function draw() {
+  background(0);
+
+  if (!started || !cam || !cam.elt) {
+    // Mensaje de error o carga
+    let msg = "Cargando cámara...";
+    if (started && (!cam || !cam.elt)) {
+      msg = "Error: Cámara no disponible. Revisa consola y permisos.";
+    }
+    if (useWEBGL) {
+      push();
+      resetMatrix();
+      ortho();
+      textAlign(CENTER);
+      textSize(24);
+      fill(255, 0, 0); // Rojo para error
+      text(msg, 0, 0);
+      pop();
+    } else {
+      textAlign(CENTER);
+      textSize(24);
+      fill(255, 0, 0);
+      text(msg, width/2, height/2);
+    }
+    return;
+  }
+
+  // Verificar si el video tiene datos (para evitar negro)
+  if (!cam.elt.videoWidth || cam.elt.videoWidth === 0) {
+    let msg = "Cámara conectada pero sin video (posiblemente pausada). Reintenta.";
+    if (useWEBGL) {
+      push();
+      resetMatrix();
+      ortho();
+      textAlign(CENTER);
+      textSize(24);
+      fill(255, 255, 0);
+      text(msg, 0, 0);
+      pop();
+    } else {
+      textAlign(CENTER);
+      textSize(24);
+      fill(255, 255, 0);
+      text(msg, width/2, height/2);
+    }
+    return;
+  }
+
+  if (useWEBGL) {
+    resetMatrix();
+    let currentShader = useDistortion ? shaderProgram : simpleShaderProgram;
+    shader(currentShader);
+    currentShader.setUniform("tex0", cam);
+    currentShader.setUniform("resolution", [width, height]);
+    if (useDistortion) {
+      currentShader.setUniform("time", millis() / 1000.0);
+      currentShader.setUniform("distortionIntensity", distortionIntensity);
+    }
+    plane(width, height);
+    resetShader();
+  } else {
+    // Modo 2D: imagen cruda
+    image(cam, 0, 0, width, height);
+  }
+}
+
+function windowResized() {
+  resizeCanvas(windowWidth, windowHeight);
+  if (started && cam) {
+    cam.size(windowWidth, windowHeight);
+  }
+  if (useWEBGL) {
+    ortho(-width / 2, width / 2, height / 2, -height / 2, 0.1, 100);
+  }
+}
+</script>
+</body>
+</html>
