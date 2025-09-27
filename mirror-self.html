@@ -275,7 +275,9 @@
   const startBtn = document.getElementById('start');
   const stopBtn = document.getElementById('stop');
 
-  let net = null, running = false, offCanvas = null;
+  let net = null, running = false;
+  let offCanvas = null;
+  let offCtx = null;
   let W = 480, H = 640; // Defaults
   let currentMaskData = null;
   let frameCount = 0;
@@ -283,6 +285,7 @@
   const MASK_BLUR_RADIUS = 4;
   let prevTime = 0;
   const SMOOTHING_FACTOR = 0.7;
+  const outCtx = out.getContext('2d');
 
   // Función para actualizar dimensiones basadas en video
   function updateDimensions() {
@@ -298,6 +301,9 @@
       }
       offCanvas.width = W;
       offCanvas.height = H;
+      
+      // Actualizar offCtx
+      offCtx = offCanvas.getContext('2d');
       
       // Actualizar CSS aspect-ratio dinámicamente
       const aspectRatio = W / H;
@@ -316,9 +322,6 @@
   window.addEventListener('orientationchange', () => {
     setTimeout(updateDimensions, 100); // Delay para que se estabilice
   });
-
-  const offCtx = offCanvas ? offCanvas.getContext('2d') : null;
-  const outCtx = out.getContext('2d');
 
   async function setupCamera() {
     try {
@@ -339,7 +342,7 @@
       // Esperar un frame para obtener dimensiones reales
       await new Promise(resolve => {
         const checkReady = () => {
-          if (video.videoWidth > 0) {
+          if (video.videoWidth > 0 && offCtx) {
             updateDimensions();
             resolve();
           } else {
@@ -377,18 +380,16 @@
   }
 
   async function frameLoop(currentTime) {
-    if (!running) return;
+    if (!running || !offCtx || !offCanvas) return;
     
     const deltaTime = (currentTime - prevTime) / 1000;
     prevTime = currentTime;
 
     // Flip horizontal (espejo)
-    if (offCtx) {
-      offCtx.save();
-      offCtx.scale(-1, 1);
-      offCtx.drawImage(video, -W, 0, W, H);
-      offCtx.restore();
-    }
+    offCtx.save();
+    offCtx.scale(-1, 1);
+    offCtx.drawImage(video, -W, 0, W, H);
+    offCtx.restore();
 
     // Segmentación optimizada
     if (frameCount % SEGMENTATION_INTERVAL === 0) {
@@ -412,7 +413,7 @@
     }
     frameCount++;
 
-    if (currentMaskData && outCtx && offCtx) {
+    if (currentMaskData) {
       // Aplicar máscara al frame
       const temp = document.createElement('canvas');
       temp.width = W;
@@ -435,17 +436,17 @@
         outCtx.putImageData(col, newX, 0);
       }
 
-      // Distorsión vertical
-      const verticalTemp = document.createElement('canvas');
-      verticalTemp.width = W;
-      verticalTemp.height = H;
-      const vctx = verticalTemp.getContext('2d');
-      vctx.drawImage(out, 0, 0);
+      // Distorsión vertical (usar un canvas temporal para el horizontal distorsionado)
+      const horizontalTemp = document.createElement('canvas');
+      horizontalTemp.width = W;
+      horizontalTemp.height = H;
+      const hctx = horizontalTemp.getContext('2d');
+      hctx.drawImage(out, 0, 0); // Copiar el output actual (horizontal)
 
       const verticalTimeOffset = performance.now() / 300;
       for (let y = 0; y < H; y += slice) {
         const dy = Math.round(Math.sin((y / 30) + verticalTimeOffset) * amp * 8 * deltaTime * 60);
-        const row = vctx.getImageData(0, y, W, slice);
+        const row = hctx.getImageData(0, y, W, slice);
         const newY = Math.max(0, Math.min(H - slice, y + dy));
         outCtx.putImageData(row, 0, newY);
       }
@@ -459,7 +460,8 @@
         outCtx.fillStyle = `rgba(200,100,150,${intensity.value / 400})`;
         outCtx.fillRect(0, 0, W, H);
       }
-    } else if (offCtx) {
+    } else {
+      // Fallback: dibujar frame sin distorsión si no hay máscara
       outCtx.drawImage(offCanvas, 0, 0);
     }
 
@@ -483,7 +485,7 @@
     currentMaskData = null;
     frameCount = 0;
     outCtx.clearRect(0, 0, W, H);
-    if (video.srcObject && offCtx) {
+    if (video.srcObject && offCtx && offCanvas) {
       offCtx.save();
       offCtx.scale(-1, 1);
       offCtx.drawImage(video, -W, 0, W, H);
@@ -493,11 +495,6 @@
     startBtn.textContent = 'Iniciar Experiencia';
     startBtn.style.opacity = '1';
   };
-
-  // Inicializar offCtx después de defaults
-  if (offCanvas) {
-    offCtx = offCanvas.getContext('2d');
-  }
 })();
 </script>
 </body>
