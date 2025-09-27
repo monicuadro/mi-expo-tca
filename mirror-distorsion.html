@@ -65,7 +65,20 @@ function setup() {
   let cnv = createCanvas(windowWidth, windowHeight, WEBGL);
   cnv.style('display', 'block');
 
-  shaderProgram = createShader(vertShader(), document.getElementById("fragShader").textContent);
+  // Vertex shader corregido: incluye matrices de proyección y modelo para renderizado correcto en WEBGL
+  let vertSource = `
+    attribute vec3 aPosition;
+    attribute vec2 aTexCoord;
+    varying vec2 vTexCoord;
+    uniform mat4 uProjectionMatrix;
+    uniform mat4 uModelViewMatrix;
+    void main() {
+      vTexCoord = aTexCoord;
+      gl_Position = uProjectionMatrix * uModelViewMatrix * vec4(aPosition, 1.0);
+    }
+  `;
+
+  shaderProgram = createShader(vertSource, document.getElementById("fragShader").textContent);
   noStroke();
 
   let btn = select("#startBtn");
@@ -96,6 +109,9 @@ function draw() {
     return;
   }
 
+  // Resetear matrices para un quad full-screen
+  resetMatrix();
+
   shader(shaderProgram);
   shaderProgram.setUniform("tex0", cam);
   shaderProgram.setUniform("resolution", [width, height]);
@@ -106,19 +122,11 @@ function draw() {
 
 function windowResized() {
   resizeCanvas(windowWidth, windowHeight);
+  if (started && cam) {
+    cam.size(windowWidth, windowHeight);
+  }
 }
 
-function vertShader() {
-  return `
-  attribute vec3 aPosition;
-  attribute vec2 aTexCoord;
-  varying vec2 vTexCoord;
-  void main() {
-    vTexCoord = aTexCoord;
-    gl_Position = vec4(aPosition, 1.0);
-  }
-  `;
-}
 </script>
 </body>
 </html>
