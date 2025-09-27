@@ -1,0 +1,525 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width,initial-scale=1.0" />
+<title>Espejo Distorsionado: Reflexión y Dismorfia Corporal</title>
+<style>
+body {
+margin: 0;
+font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+background: linear-gradient(135deg, #0f0f23 0%, #1a0d2e 50%, #2d1b69 100%);
+color: #fff;
+display: flex;
+flex-direction: column;
+align-items: center;
+min-height: 100vh;
+padding: 20px;
+box-sizing: border-box;
+}
+
+h1 {
+font-size: 1.5rem;
+font-weight: 300;
+margin: 20px 0 10px;
+text-align: center;
+letter-spacing: 1px;
+color: #e0d7ff;
+text-shadow: 0 2px 4px rgba(0,0,0,0.3);
+}
+
+p.description {
+max-width: 600px;
+text-align: center;
+font-size: 0.9rem;
+line-height: 1.4;
+margin: 0 0 20px;
+color: #d1d5db;
+opacity: 0.9;
+}
+
+#stage {
+position: relative;
+width: 480px;
+height: 640px;
+margin: 20px 0;
+border-radius: 16px;
+overflow: hidden;
+box-shadow:
+0 10px 30px rgba(139, 92, 246, 0.3),
+0 4px 20px rgba(0,0,0,0.4),
+inset 0 2px 4px rgba(255,255,255,0.1);
+transition: box-shadow 0.3s ease;
+}
+
+#stage:hover {
+box-shadow:
+0 15px 40px rgba(139, 92, 246, 0.4),
+0 6px 25px rgba(0,0,0,0.5),
+inset 0 2px 4px rgba(255,255,255,0.1);
+}
+
+video, canvas {
+position: absolute;
+left: 0;
+top: 0;
+width: 100%;
+height: 100%;
+object-fit: contain; /* Preserva aspect ratio sin estirar, como cámara normal */
+border-radius: 16px;
+background: #000; /* Fondo negro para barras si no llena */
+}
+
+#controls {
+margin-top: 20px;
+display: flex;
+flex-direction: column;
+gap: 16px;
+align-items: center;
+width: 100%;
+max-width: 480px;
+}
+
+.control-group {
+display: flex;
+flex-direction: column;
+gap: 8px;
+width: 100%;
+align-items: center;
+}
+
+label {
+font-size: 0.85rem;
+color: #e0d7ff;
+font-weight: 500;
+margin-bottom: 4px;
+}
+
+#intensity {
+width: 100%;
+height: 6px;
+border-radius: 3px;
+background: rgba(255,255,255,0.1);
+outline: none;
+-webkit-appearance: none;
+}
+
+#intensity::-webkit-slider-thumb {
+-webkit-appearance: none;
+appearance: none;
+width: 20px;
+height: 20px;
+border-radius: 50%;
+background: linear-gradient(135deg, #8B5CF6, #A78BFA);
+cursor: pointer;
+box-shadow: 0 2px 6px rgba(139, 92, 246, 0.4);
+}
+
+#intensity::-moz-range-thumb {
+width: 20px;
+height: 20px;
+border-radius: 50%;
+background: linear-gradient(135deg, #8B5CF6, #A78BFA);
+cursor: pointer;
+border: none;
+box-shadow: 0 2px 6px rgba(139, 92, 246, 0.4);
+}
+
+.filter-buttons {
+display: flex;
+gap: 8px;
+width: 100%;
+justify-content: center;
+flex-wrap: wrap;
+}
+
+.filter-btn {
+padding: 8px 16px;
+border-radius: 8px;
+border: 1px solid rgba(255,255,255,0.2);
+background: rgba(255,255,255,0.1);
+color: #fff;
+font-size: 0.8rem;
+cursor: pointer;
+transition: all 0.3s ease;
+min-width: 80px;
+}
+
+.filter-btn.active,
+.filter-btn:hover {
+background: linear-gradient(135deg, #8B5CF6, #A78BFA);
+border-color: #A78BFA;
+transform: translateY(-1px);
+box-shadow: 0 2px 8px rgba(139, 92, 246, 0.3);
+}
+
+.btn-group {
+display: flex;
+gap: 12px;
+width: 100%;
+justify-content: center;
+}
+
+.btn {
+padding: 10px 20px;
+border-radius: 12px;
+border: none;
+font-size: 0.85rem;
+font-weight: 500;
+cursor: pointer;
+transition: all 0.3s ease;
+text-transform: uppercase;
+letter-spacing: 0.5px;
+min-width: 120px;
+box-shadow: 0 4px 12px rgba(0,0,0,0.2);
+}
+
+#start {
+background: linear-gradient(135deg, #8B5CF6, #A78BFA);
+color: #fff;
+}
+
+#start:hover {
+transform: translateY(-2px);
+box-shadow: 0 6px 16px rgba(139, 92, 246, 0.4);
+}
+
+#stop {
+background: linear-gradient(135deg, #6B7280, #9CA3AF);
+color: #fff;
+}
+
+#stop:hover {
+transform: translateY(-2px);
+box-shadow: 0 6px 16px rgba(107, 114, 128, 0.4);
+}
+
+.btn:active {
+transform: translateY(0);
+}
+
+@media (max-width: 600px) {
+body {
+padding: 10px; /* Menos padding en mobile para más espacio */
+}
+
+h1 {
+font-size: 1.2rem;
+}
+
+p.description {
+font-size: 0.8rem;
+max-width: 100%;
+}
+
+#stage {
+width: 100%; /* Ajusta al ancho del navegador en mobile */
+max-width: none;
+height: auto;
+aspect-ratio: 3/4; /* Vertical portrait ajustado al viewport, ~9/12 para no estirar */
+margin: 10px 0;
+}
+
+label {
+font-size: 0.8rem;
+}
+
+.filter-buttons {
+flex-direction: column;
+gap: 6px;
+}
+
+.filter-btn {
+min-width: 100%;
+font-size: 0.75rem;
+}
+
+.btn-group {
+flex-direction: column;
+}
+
+.btn {
+min-width: 100%;
+font-size: 0.8rem;
+}
+}
+</style>
+</head>
+<body>
+<h1>Espejo Distorsionado</h1>
+<p class="description">
+Mírate en un espejo digital que distorsiona tu reflejo, explorando la dismorfia corporal. Ajusta intensidad y filtros para alterar tu percepción con la cámara frontal.
+</p>
+<div id="stage">
+<video id="video" autoplay playsinline></video>
+<canvas id="out"></canvas>
+</div>
+<div id="controls">
+<div class="control-group">
+<label for="intensity">Intensidad (0-100)</label>
+<input id="intensity" type="range" min="0" max="100" value="0"> <!-- Inicial en 0 para vista normal -->
+</div>
+<div class="control-group">
+<label>Filtro Dismórfico</label>
+<div class="filter-buttons">
+<button class="filter-btn active" data-filter="wave">Mareas del Alma</button>
+<button class="filter-btn" data-filter="stretch">Elongación Etérea</button>
+<button class="filter-btn" data-filter="bulge">Protuberancia Oculta</button>
+<button class="filter-btn" data-filter="liquify">Fusión Fluida</button>
+</div>
+</div>
+<div class="btn-group">
+<button id="start" class="btn">Iniciar Sombras</button>
+<button id="stop" class="btn">Restaurar Esencia</button>
+</div>
+</div>
+<script src="https://cdn.jsdelivr.net/npm/@tensorflow/tfjs@3.21.0/dist/tf.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/@tensorflow-models/body-pix@2.0.5/dist/body-pix.min.js"></script>
+<script>
+(async function(){
+const video = document.getElementById('video');
+const out = document.getElementById('out');
+const intensity = document.getElementById('intensity');
+const startBtn = document.getElementById('start');
+const stopBtn = document.getElementById('stop');
+const filterBtns = document.querySelectorAll('.filter-btn');
+let currentFilter = 'wave';
+
+// Tamaños ajustados: en mobile, aspect-ratio maneja vertical sin fixed size
+let W = window.innerWidth < 600 ? window.innerWidth - 40 : 480; // Ancho disponible en mobile
+let H = W * (4/3); // Aspect vertical ajustado al viewport (3:4 portrait)
+out.width = W;
+out.height = H;
+let net = null, running = false, offCanvas = document.createElement('canvas');
+offCanvas.width = W;
+offCanvas.height = H;
+const offCtx = offCanvas.getContext('2d');
+const outCtx = out.getContext('2d');
+
+// Canvas temporal para preservar aspect ratio del video
+const tempCanvas = document.createElement('canvas');
+tempCanvas.width = W;
+tempCanvas.height = H;
+const tempCtx = tempCanvas.getContext('2d');
+
+// Desactivar BodyPix en mobile para simplicidad y velocidad
+let useMask = window.innerWidth >= 600;
+let lastSegmentationTime = 0;
+
+// Manejar botones de filtro
+filterBtns.forEach(btn => {
+  btn.addEventListener('click', () => {
+    filterBtns.forEach(b => b.classList.remove('active'));
+    btn.classList.add('active');
+    currentFilter = btn.dataset.filter;
+  });
+});
+
+async function setupCamera() {
+  if (cameraSetup) return;
+  try {
+    const stream = await navigator.mediaDevices.getUserMedia({
+      video: { 
+        facingMode: 'user', 
+        width: { ideal: W }, 
+        height: { ideal: H },
+        aspectRatio: { ideal: 3/4 } // Portrait natural para mobile
+      },
+      audio: false
+    });
+    video.srcObject = stream;
+    await video.play();
+    cameraSetup = true;
+  } catch (err) {
+    console.error('Error en cámara:', err);
+    alert('No se pudo acceder a la cámara. Verifica permisos.');
+  }
+}
+
+async function loadModel() {
+  if (!useMask) return;
+  try {
+    net = await bodyPix.load({
+      architecture: 'MobileNetV1',
+      outputStride: 16,
+      multiplier: 0.25
+    });
+  } catch (err) {
+    console.error('Error cargando modelo:', err);
+    useMask = false;
+  }
+}
+
+function applyFilter(time) {
+  const amp = parseFloat(intensity.value) / 20;
+  if (amp === 0) {
+    // Si intensidad=0, solo mostrar video normal (sin distorsión)
+    outCtx.clearRect(0, 0, W, H);
+    outCtx.drawImage(offCanvas, 0, 0);
+    return;
+  }
+
+  const slice = useMask ? 8 : 16; // Ajuste simple
+
+  const distortCanvas = document.createElement('canvas');
+  distortCanvas.width = W;
+  distortCanvas.height = H;
+  const distortCtx = distortCanvas.getContext('2d');
+
+  const sourceCanvas = useMask ? bodyCanvas : offCanvas;
+  const sourceCtx = useMask ? bodyCtx : offCtx;
+  distortCtx.drawImage(sourceCanvas, 0, 0);
+
+  let dx = 0, dy = 0;
+
+  for (let x = 0; x < W; x += slice) {
+    switch (currentFilter) {
+      case 'wave':
+        dx = Math.sin((x / 20 + time / 400)) * amp * 20;
+        dy = Math.sin((x / 30 + time / 500)) * amp * 10;
+        break;
+      case 'stretch':
+        dx = Math.sin((x / 25 + time / 600)) * amp * 15;
+        dy = (x / W - 0.5) * amp * 25;
+        break;
+      case 'bulge':
+        const centerX = W / 2;
+        const distX = Math.abs(x - centerX) / (W / 2);
+        dx = Math.cos(time / 700) * amp * 20 * (1 - distX);
+        dy = Math.sin(time / 700) * amp * 15 * (1 - distX);
+        break;
+      case 'liquify':
+        dx = (Math.sin((x / 15 + time / 350)) + Math.cos((x / 20 + time / 450))) * amp * 18;
+        dy = Math.sin((x / 18 + time / 400)) * amp * 12;
+        break;
+      default:
+        dx = dy = 0;
+    }
+
+    const col = sourceCtx.getImageData(x, 0, slice, H);
+    const clampedX = Math.max(0, Math.min(W - slice, x + dx));
+    const clampedY = Math.max(0, Math.min(H - slice, dy));
+    distortCtx.putImageData(col, clampedX, clampedY);
+  }
+
+  outCtx.clearRect(0, 0, W, H);
+  outCtx.globalAlpha = 0.6;
+  outCtx.drawImage(offCanvas, 0, 0);
+  outCtx.globalAlpha = 1.0;
+  outCtx.drawImage(distortCanvas, 0, 0);
+
+  if (intensity.value > 0) {
+    outCtx.fillStyle = `rgba(200, 100, 150, ${intensity.value / 300})`;
+    outCtx.fillRect(0, 0, W, H);
+  }
+}
+
+async function frameLoop() {
+  if (!running) return;
+
+  const time = performance.now();
+
+  // Dibujar video preservando aspect ratio (como cámara normal)
+  const srcW = video.videoWidth;
+  const srcH = video.videoHeight;
+  if (srcW > 0 && srcH > 0) {
+    const scale = Math.min(W / srcW, H / srcH); // Contain: escala mínima para fit sin stretch
+    const dW = srcW * scale;
+    const dH = srcH * scale;
+    const oX = (W - dW) / 2;
+    const oY = (H - dH) / 2;
+
+    tempCtx.clearRect(0, 0, W, H);
+    tempCtx.drawImage(video, 0, 0, srcW, srcH, oX, oY, dW, dH);
+  }
+
+  // Flip horizontal en offCanvas
+  offCtx.clearRect(0, 0, W, H);
+  offCtx.save();
+  offCtx.scale(-1, 1);
+  offCtx.drawImage(tempCanvas, -W, 0);
+  offCtx.restore();
+
+  // Segmentación solo en desktop
+  if (useMask && net && time - lastSegmentationTime > 150) {
+    try {
+      const segmentation = await net.segmentPerson(offCanvas, {
+        internalResolution: 'low',
+        segmentationThreshold: 0.7
+      });
+      const maskCanvas = document.createElement('canvas');
+      maskCanvas.width = W;
+      maskCanvas.height = H;
+      const maskCtx = maskCanvas.getContext('2d');
+      const mask = bodyPix.toMask(segmentation, {r:0,g:0,b:0,a:0}, {r:0,g:0,b:0,a:255});
+      maskCtx.putImageData(mask, 0, 0);
+
+      const bodyCtx = offCanvas.getContext('2d'); // Reutilizar off para simplicidad
+      bodyCtx.globalCompositeOperation = 'destination-in';
+      bodyCtx.drawImage(maskCanvas, 0, 0);
+      bodyCtx.globalCompositeOperation = 'source-over';
+
+      lastSegmentationTime = time;
+    } catch (err) {
+      useMask = false;
+    }
+  }
+
+  applyFilter(time);
+  requestAnimationFrame(frameLoop);
+}
+
+let cameraSetup = false;
+startBtn.addEventListener('click', async () => {
+  if (running) return;
+  await setupCamera();
+  await loadModel();
+  running = true;
+  frameLoop();
+  startBtn.textContent = 'Sombras Iniciadas';
+  startBtn.style.opacity = '0.7';
+});
+
+stopBtn.addEventListener('click', () => {
+  running = false;
+  outCtx.clearRect(0, 0, W, H);
+  if (video.srcObject && video.videoWidth > 0) {
+    const srcW = video.videoWidth;
+    const srcH = video.videoHeight;
+    const scale = Math.min(W / srcW, H / srcH);
+    const dW = srcW * scale;
+    const dH = srcH * scale;
+    const oX = (W - dW) / 2;
+    const oY = (H - dH) / 2;
+
+    tempCtx.clearRect(0, 0, W, H);
+    tempCtx.drawImage(video, 0, 0, srcW, srcH, oX, oY, dW, dH);
+
+    outCtx.save();
+    outCtx.scale(-1, 1);
+    outCtx.drawImage(tempCanvas, -W, 0);
+    outCtx.restore();
+  }
+  startBtn.textContent = 'Iniciar Sombras';
+  startBtn.style.opacity = '1';
+});
+
+// Resize simple para mobile
+window.addEventListener('resize', () => {
+  const newW = window.innerWidth < 600 ? window.innerWidth - 40 : 480;
+  const newH = newW * (4/3);
+  if (newW !== W || newH !== H) {
+    W = newW;
+    H = newH;
+    out.width = W;
+    out.height = H;
+    offCanvas.width = W;
+    offCanvas.height = H;
+    tempCanvas.width = W;
+    tempCanvas.height = H;
+  }
+});
+})();
+</script>
+</body>
+</html>
