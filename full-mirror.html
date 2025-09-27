@@ -1,0 +1,299 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <title>Espejo Distorsionado - Simple y Estético</title>
+  <style>
+    body, html {
+      margin: 0;
+      padding: 0;
+      overflow: hidden;
+      background: linear-gradient(135deg, #000, #333); /* Fondo elegante negro-gris */
+      height: 100vh;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-family: 'Arial', sans-serif;
+    }
+    canvas {
+      display: block;
+      border-radius: 20px; /* Bordes redondeados para estética */
+      box-shadow: 0 0 30px rgba(255, 255, 255, 0.2); /* Sombra suave */
+      max-width: 90vw;
+      max-height: 90vh;
+    }
+    #controls {
+      position: absolute;
+      top: 20px;
+      left: 50%;
+      transform: translateX(-50%);
+      z-index: 20;
+      background: rgba(0, 0, 0, 0.8);
+      padding: 20px;
+      border-radius: 15px;
+      color: white;
+      text-align: center;
+      backdrop-filter: blur(10px); /* Efecto glassmorphism para modernidad */
+      box-shadow: 0 4px 20px rgba(0, 0, 0, 0.5);
+    }
+    #startBtn, #toggleDistortionBtn {
+      padding: 12px 24px;
+      background: linear-gradient(45deg, #4CAF50, #45a049); /* Verde elegante */
+      border: none;
+      font-size: 18px;
+      color: white;
+      cursor: pointer;
+      border-radius: 25px;
+      margin: 10px 0;
+      transition: transform 0.2s, box-shadow 0.2s;
+      width: 200px;
+    }
+    #startBtn:hover, #toggleDistortionBtn:hover {
+      transform: scale(1.05);
+      box-shadow: 0 4px 15px rgba(76, 175, 80, 0.4);
+    }
+    #distortionSlider {
+      width: 200px;
+      margin: 15px auto;
+      height: 6px;
+      border-radius: 3px;
+      background: #555;
+      outline: none;
+      -webkit-appearance: none;
+    }
+    #distortionSlider::-webkit-slider-thumb {
+      -webkit-appearance: none;
+      width: 20px;
+      height: 20px;
+      border-radius: 50%;
+      background: #4CAF50;
+      cursor: pointer;
+    }
+    #distortionValue {
+      font-size: 16px;
+      margin-top: 5px;
+      color: #4CAF50;
+    }
+    #status {
+      font-size: 14px;
+      margin: 10px 0;
+      padding: 8px;
+      background: rgba(255, 255, 0, 0.2);
+      border-radius: 10px;
+      min-height: 20px;
+    }
+    .hidden {
+      display: none !important;
+    }
+  </style>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/p5.js/1.9.0/p5.min.js"></script>
+</head>
+<body>
+<div id="controls">
+  <button id="startBtn">Activar Cámara Trasera</button>
+  <div id="status">Estado: Listo. Haz clic para solicitar permiso a la cámara.</div>
+  <button id="toggleDistortionBtn" class="hidden">Activar Distorsión</button>
+  <label for="distortionSlider" class="hidden" style="font-size: 16px; margin: 10px 0;">Intensidad de Distorsión (en tu cuerpo como espejo):</label>
+  <input type="range" id="distortionSlider" min="0" max="0.1" step="0.005" value="0" class="hidden">
+  <div id="distortionValue" class="hidden">Intensidad: 0.00</div>
+</div>
+
+<script id="fragShader" type="x-shader/x-fragment">
+#ifdef GL_ES
+precision mediump float;
+#endif
+
+uniform sampler2D tex0;
+uniform vec2 resolution;
+uniform float time;
+uniform float distortionIntensity;
+
+void main() {
+  vec2 uv = gl_FragCoord.xy / resolution.xy;
+  uv.y = 1.0 - uv.y; // Flip Y para orientación correcta en video
+
+  // Distorsión ondulada suave, enfocada en movimiento corporal (ondas en X/Y)
+  float waveX = distortionIntensity * sin(uv.y * 15.0 + time * 3.0); // Más frecuencia para efecto en cuerpo
+  float waveY = distortionIntensity * cos(uv.x * 12.0 + time * 2.5);
+  uv.x += waveX;
+  uv.y += waveY;
+  uv.x = clamp(uv.x, 0.0, 1.0);
+  uv.y = clamp(uv.y, 0.0, 1.0);
+
+  vec3 col = texture2D(tex0, uv).rgb;
+  gl_FragColor = vec4(col, 1.0);
+}
+</script>
+
+<script>
+let cam;
+let shaderProgram;
+let started = false;
+let useDistortion = false;
+let distortionIntensity = 0.0;
+let useWEBGL = false; // Empezar en 2D simple para asegurar visibilidad
+let myCanvas;
+
+function setup() {
+  // Canvas centrado y responsivo
+  myCanvas = createCanvas(min(windowWidth, 800), min(windowHeight, 600)); // Tamaño fijo max para estética, centrado por CSS
+  myCanvas.style('display', 'block');
+  myCanvas.position((windowWidth - width) / 2, (windowHeight - height) / 2); // Centrar manualmente
+
+  // Inicializar shader solo si se activa WEBGL
+  let vertSource = `
+    attribute vec3 aPosition;
+    attribute vec2 aTexCoord;
+    varying vec2 vTexCoord;
+    uniform mat4 uProjectionMatrix;
+    uniform mat4 uModelViewMatrix;
+    void main() {
+      vTexCoord = aTexCoord;
+      gl_Position = uProjectionMatrix * uModelViewMatrix * vec4(aPosition, 1.0);
+    }
+  `;
+  shaderProgram = createShader(vertSource, document.getElementById("fragShader").textContent);
+
+  noStroke();
+  textAlign(CENTER);
+  textSize(20);
+
+  // Controles
+  select("#startBtn").mousePressed(startCamera);
+  select("#toggleDistortionBtn").mousePressed(toggleDistortion);
+
+  let slider = select("#distortionSlider");
+  slider.input(updateDistortion);
+
+  updateStatus("Estado: Listo. Haz clic en 'Activar Cámara Trasera' para ver tu reflejo distorsionado.");
+}
+
+function startCamera() {
+  updateStatus("Estado: Solicitando permiso para cámara trasera... Acepta en el popup del navegador.");
+
+  const constraints = {
+    video: {
+      facingMode: { ideal: "environment" }, // Prioridad a cámara trasera para efecto espejo
+      width: { ideal: 640 },
+      height: { ideal: 480 },
+      frameRate: { ideal: 30 }
+    },
+    audio: false
+  };
+
+  cam = createCapture(constraints, onCameraSuccess, onCameraError);
+  cam.size(width, height);
+  cam.hide();
+
+  // Forzar play
+  setTimeout(() => {
+    if (cam && cam.elt && cam.elt.paused) {
+      cam.elt.play().catch(e => console.error("Play error:", e));
+    }
+  }, 500);
+
+  started = true;
+  select("#startBtn").addClass("hidden");
+  select("#toggleDistortionBtn").removeClass("hidden");
+  select("#distortionSlider").removeClass("hidden");
+  select("#distortionSlider").elt.previousElementSibling.removeClass("hidden"); // Label
+  select("#distortionValue").removeClass("hidden");
+}
+
+function onCameraSuccess() {
+  console.log("Cámara trasera activada exitosamente!");
+  updateStatus("Estado: ¡Permiso concedido! Ahora ves tu reflejo en el centro. Activa distorsión para efecto en tu cuerpo.");
+  cam.loop();
+  useWEBGL = false; // Mantener 2D inicialmente para visibilidad inmediata
+  redraw(); // Forzar redraw
+}
+
+function onCameraError(error) {
+  console.error("Error cámara:", error.name, error.message);
+  let msg = "Error: No se pudo acceder a la cámara trasera. ";
+  if (error.name === "NotAllowedError") msg += "Permiso denegado. Revisa y acepta.";
+  else if (error.name === "NotFoundError") msg += "No hay cámara trasera disponible. Prueba frontal cambiando 'environment' a 'user'.";
+  else msg += "Intenta en Chrome/Firefox con HTTPS/localhost.";
+  updateStatus("Estado: " + msg);
+  select("#startBtn").show(); // Permitir reintento
+}
+
+function toggleDistortion() {
+  useDistortion = !useDistortion;
+  useWEBGL = useDistortion; // Solo activar WEBGL cuando se usa distorsión
+
+  if (useWEBGL) {
+    // Switch a WEBGL
+    myCanvas.remove();
+    myCanvas = createCanvas(min(windowWidth, 800), min(windowHeight, 600), WEBGL);
+    myCanvas.style('display', 'block');
+    myCanvas.position((windowWidth - width) / 2, (windowHeight - height) / 2);
+    ortho(-width / 2, width / 2, height / 2, -height / 2, 0.1, 100);
+    select("#toggleDistortionBtn").html("Desactivar Distorsión (Volver a Normal)");
+    updateStatus("Estado: Distorsión activada en WEBGL. Ajusta el slider para efecto ondulado en tu cuerpo.");
+  } else {
+    // Switch a 2D normal
+    myCanvas.remove();
+    myCanvas = createCanvas(min(windowWidth, 800), min(windowHeight, 600));
+    myCanvas.style('display', 'block');
+    myCanvas.position((windowWidth - width) / 2, (windowHeight - height) / 2);
+    select("#toggleDistortionBtn").html("Activar Distorsión");
+    updateStatus("Estado: Vista normal (sin distorsión). Tu reflejo claro en el centro.");
+  }
+}
+
+function updateDistortion() {
+  distortionIntensity = parseFloat(select("#distortionSlider").value());
+  select("#distortionValue").html("Intensidad: " + distortionIntensity.toFixed(2));
+  if (useDistortion && started) {
+    shaderProgram.setUniform("distortionIntensity", distortionIntensity);
+  }
+}
+
+function updateStatus(msg) {
+  select("#status").html(msg);
+  console.log(msg);
+}
+
+function draw() {
+  background(0);
+
+  if (!started || !cam || !cam.elt || cam.elt.videoWidth === 0) {
+    // Mensaje centrado elegante
+    fill(255);
+    text("Solicitando acceso a cámara...\n(Asegúrate de aceptar el permiso)", 0, 0);
+    return;
+  }
+
+  if (useWEBGL) {
+    // Modo distorsionado
+    resetMatrix();
+    shader(shaderProgram);
+    shaderProgram.setUniform("tex0", cam);
+    shaderProgram.setUniform("resolution", [width, height]);
+    shaderProgram.setUniform("time", millis() / 1000.0);
+    shaderProgram.setUniform("distortionIntensity", distortionIntensity);
+    plane(width, height);
+    resetShader();
+  } else {
+    // Modo simple 2D: cámara cruda centrada
+    image(cam, -width/2, -height/2, width, height); // Centrado en canvas
+  }
+}
+
+function windowResized() {
+  // Recalcular posición centrada
+  let newW = min(windowWidth, 800);
+  let newH = min(windowHeight, 600);
+  resizeCanvas(newW, newH);
+  myCanvas.position((windowWidth - newW) / 2, (windowHeight - newH) / 2);
+  if (started && cam) {
+    cam.size(newW, newH);
+  }
+  if (useWEBGL) {
+    ortho(-newW / 2, newW / 2, newH / 2, -newH / 2, 0.1, 100);
+  }
+}
+</script>
+</body>
+</html>
