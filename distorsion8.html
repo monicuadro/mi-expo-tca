@@ -1,0 +1,382 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+    <title>Espejo Distorsionado: Reflexión Optimizada</title>
+    <style>
+        body {
+            margin: 0;
+            padding: 0;
+            font-family: Arial, sans-serif;
+            background: #000;
+            color: #fff;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            height: 100vh;
+            overflow: hidden;
+        }
+        #container {
+            position: relative;
+            width: 100vw;
+            height: 100vh;
+            display: flex;
+            flex-direction: column;
+        }
+        #video {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+            /* Removido scaleX(-1) del video; lo aplicamos en canvas para mejor perf */
+        }
+        #canvas {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+        }
+        #controls {
+            position: absolute;
+            bottom: 50px; /* Subido más alto (aumentado para alzar la caja ~1cm más, aprox. 30px extra) */
+            left: 50%;
+            transform: translateX(-50%);
+            z-index: 10;
+            text-align: center;
+            background: rgba(75, 0, 130, 0.7); /* Lila más apagado y frío (índigo translúcido) */
+            padding: 8px; /* Aún más reducido para compacto horizontal */
+            border-radius: 10px;
+            width: 90%; /* Más ancho para horizontalidad */
+            max-width: 350px; /* Aumentado ligeramente para caber botones */
+            transition: opacity 0.3s;
+            box-shadow: 0 4px 15px rgba(75, 0, 130, 0.3);
+        }
+        #controls.hidden { opacity: 0; pointer-events: none; }
+        #intensity {
+            width: 100%;
+            margin: 3px 0; /* Margen mínimo para ahorrar vertical */
+            height: 22px; /* Más compacto */
+        }
+        #distorsion-btn, #reset, #presets button {
+            background: linear-gradient(to right, #4B0082, #2F004F); /* Lila más frío y apagado (índigo gradiente) */
+            color: #fff;
+            border: none;
+            padding: 6px 8px; /* Más pequeño para fila horizontal */
+            margin: 1px; /* Muy mínimo para apretar */
+            border-radius: 8px;
+            font-size: 12px; /* Más pequeño para caber mejor */
+            touch-action: manipulation;
+            min-width: 60px; /* Reducido para que quepan en fila en móviles */
+            transition: transform 0.1s, box-shadow 0.2s;
+        }
+        #distorsion-btn {
+            background: linear-gradient(to right, #7CFC00, #32CD32); /* Color complementario: verde lima (complementario al índigo/púrpura) para contraste */
+        }
+        #distorsion-btn.active { 
+            background: linear-gradient(to right, #32CD32, #228B22); /* Variante más oscura del verde complementario para estado activo */
+            transform: scale(1.05);
+            box-shadow: 0 2px 10px rgba(124, 252, 0, 0.5); /* Sombra en tono verde para coherencia */
+        }
+        #instructions {
+            position: absolute;
+            top: 20px;
+            left: 20px;
+            right: 20px;
+            background: rgba(75, 0, 130, 0.7); /* Lila más apagado y frío */
+            padding: 12px; /* Ligeramente reducido */
+            border-radius: 10px;
+            z-index: 5;
+            display: none;
+            text-align: center;
+            box-shadow: 0 4px 15px rgba(75, 0, 130, 0.3);
+        }
+        #loading, #error {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            z-index: 15;
+            font-size: 16px; /* Ligeramente más pequeño */
+            text-align: center;
+            background: rgba(75, 0, 130, 0.8); /* Lila más apagado y frío */
+            padding: 12px; /* Reducido */
+            border-radius: 10px;
+            color: #fff;
+        }
+        #fps { 
+            position: absolute; 
+            top: 10px; 
+            right: 10px; 
+            font-size: 11px; /* Más pequeño */
+            z-index: 10; 
+            background: rgba(75, 0, 130, 0.6); /* Lila más frío */
+            padding: 4px;
+            border-radius: 5px;
+            color: #fff;
+        } /* Opcional: comenta para ocultar */
+        #presets {
+            display: flex;
+            flex-wrap: wrap;
+            justify-content: space-evenly; /* Mejor distribución horizontal para que quepan visiblemente */
+            margin-top: 3px; /* Mínimo espacio */
+            gap: 2px; /* Espacio entre botones para flujo horizontal */
+        }
+        @media (max-width: 768px) {
+            #controls { 
+                width: 95%; /* Casi full-width para máxima horizontalidad en móvil */
+                padding: 6px; /* Muy compacto */
+                bottom: 70px; /* Subido más alto en móviles (aumentado para alzar ~1cm más y asegurar visibilidad total en celular) */
+                max-width: none; /* Sin límite para móviles pequeños */
+            }
+            #instructions { font-size: 13px; padding: 10px; }
+            body { font-size: 15px; } /* Ajuste general */
+            #presets button, #distorsion-btn { 
+                padding: 6px 6px; /* Compacto pero táctil */
+                font-size: 12px; /* Pequeño para caber */
+                min-width: 55px; /* Aún más reducido para fila completa */
+                margin: 0; /* Sin margen extra, usa gap */
+            }
+            #presets { 
+                flex-direction: row; 
+                flex-wrap: nowrap; /* Intenta no wrap para fila única si cabe */
+                justify-content: space-evenly; 
+                margin-top: 2px;
+                gap: 1px;
+            }
+            label { font-size: 13px; } /* Label más pequeño */
+        }
+        @media (orientation: landscape) and (max-height: 500px) {
+            #controls { bottom: 45px; padding: 4px; opacity: 0.8; width: 95%; } /* Subido más alto también en landscape */
+            #distorsion-btn, #reset, #presets button { padding: 5px 6px; min-width: 50px; font-size: 11px; }
+            #presets { margin-top: 1px; gap: 1px; flex-wrap: nowrap; justify-content: space-around; }
+            #intensity { height: 20px; margin: 2px 0; }
+        }
+    </style>
+</head>
+<body>
+    <div id="container">
+        <video id="video" autoplay muted playsinline></video>
+        <canvas id="canvas"></canvas>
+        <div id="instructions">
+            <h2>Espejo Distorsionado </h2>
+            <p>Explora distorsiones en tu reflejo para reflexionar sobre la dismorfia corporal. Usa la cámara frontal.</p>
+            <p><strong>Efecto:</strong> Ondas + bulge (efectos variados). Activa con el botón "Distorsión".</p>
+            <button onclick="closeInstructions()" style="background: linear-gradient(to right, #4B0082, #2F004F); border: none; color: white; padding: 8px 12px; border-radius: 5px; font-size: 14px;">Iniciar Experiencia</button>
+        </div>
+        <div id="loading">Cargando cámara... Otorga permisos.</div>
+        <div id="error" style="display: none;">
+            <p>Error en cámara. Verifica permisos o HTTPS.</p>
+            <button onclick="initCamera()" style="background: linear-gradient(to right, #4B0082, #2F004F); border: none; color: white; padding: 8px 12px; border-radius: 5px; font-size: 14px;">Reintentar</button>
+        </div>
+        <div id="fps">FPS: 0</div>
+        <div id="controls">
+            <label for="intensity" style="font-size: 14px;">Intensidad (0-100): <span id="value">0</span></label>
+            <input type="range" id="intensity" min="0" max="100" value="0" step="1">
+            <button id="distorsion-btn" onclick="toggleDistorsion()">Distorsión</button>
+            <div id="presets">
+                <button onclick="setIntensity(25)">Bajo</button>
+                <button onclick="setIntensity(50)">Medio</button>
+                <button onclick="setIntensity(75)">Alto</button>
+                <button onclick="setIntensity(100)">Intenso</button>
+                <button id="reset" onclick="resetDistortion()">Reset</button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        const video = document.getElementById('video');
+        const canvas = document.getElementById('canvas');
+        const ctx = canvas.getContext('2d');
+        const intensitySlider = document.getElementById('intensity');
+        const valueSpan = document.getElementById('value');
+        const distorsionBtn = document.getElementById('distorsion-btn');
+        const loading = document.getElementById('loading');
+        const error = document.getElementById('error');
+        const controls = document.getElementById('controls');
+        const fpsEl = document.getElementById('fps');
+        const instructions = document.getElementById('instructions');
+
+        let currentMode = 2; // Fijo en efectos variados (Mode 2)
+        let distortionActive = false; // Para toggle del botón
+        let animationId;
+        let stream;
+        let lastTime = 0;
+        let frameCount = 0;
+
+        // Inicializar cámara con resolución optimizada para móviles
+        async function initCamera() {
+            try {
+                loading.style.display = 'block';
+                error.style.display = 'none';
+                const constraints = {
+                    video: { 
+                        facingMode: 'user', 
+                        width: { ideal: window.innerWidth < 768 ? 480 : 640 }, 
+                        height: { ideal: window.innerHeight < 768 ? 360 : 480 } 
+                    }
+                };
+                stream = await navigator.mediaDevices.getUserMedia(constraints);
+                video.srcObject = stream;
+                video.onloadedmetadata = () => {
+                    canvas.width = video.videoWidth;
+                    canvas.height = video.videoHeight;
+                    loading.style.display = 'none';
+                    instructions.style.display = 'block';
+                    video.play();
+                    render();
+                };
+            } catch (err) {
+                loading.style.display = 'none';
+                error.style.display = 'block';
+                console.error('Error cámara:', err);
+            }
+        }
+
+        // Render loop optimizado
+        function render(currentTime = 0) {
+            if (video.readyState === video.HAVE_ENOUGH_DATA) {
+                // Dibujar video base
+                ctx.save();
+                ctx.scale(-1, 1); // Efecto espejo eficiente en canvas
+                ctx.drawImage(video, -canvas.width, 0, canvas.width, canvas.height);
+                ctx.restore();
+
+                const intensity = parseInt(intensitySlider.value);
+                if (distortionActive && intensity > 0) {
+                    distortImage(intensity, currentTime * 0.001); // Pasar tiempo para animaciones
+                }
+
+                // FPS counter (opcional)
+                frameCount++;
+                if (currentTime - lastTime >= 1000) {
+                    fpsEl.textContent = `FPS: ${Math.round(frameCount * 1000 / (currentTime - lastTime))}`;
+                    frameCount = 0;
+                    lastTime = currentTime;
+                }
+            }
+            animationId = requestAnimationFrame(render);
+        }
+
+        // Distorsión optimizada: usa array de datos directo con interpolación bilinear (solo Mode 2)
+        function distortImage(intensity, time) {
+            let imageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
+            let sourceData = new Uint8ClampedArray(imageData.data); // Copia fuente una vez
+
+            // Crear nuevo ImageData para destino
+            let destData = new Uint8ClampedArray(sourceData.length);
+            const w = canvas.width;
+            const h = canvas.height;
+            const cx = w / 2, cy = h / 2;
+
+            for (let y = 0; y < h; y++) {
+                for (let x = 0; x < w; x++) {
+                    let dx = 0, dy = 0;
+
+                    // Mode 2: Ondas + bulge con tiempo para fluidez
+                    dx = Math.sin(y * 0.02 + time * 2) * (intensity / 100) * 8;
+                    dy = Math.cos(x * 0.015 + time * 3) * (intensity / 100) * 6;
+                    // Bulge en centro
+                    const bulgeDist = Math.sqrt((x - cx)**2 + (y - cy)**2);
+                    if (bulgeDist < 150) {
+                        const bulgeFactor = (150 - bulgeDist) / 150 * (intensity / 100) * 0.03;
+                        dx += (x - cx) * bulgeFactor;
+                        dy += (y - cy) * bulgeFactor;
+                    }
+
+                    // Calcular posición fuente (con offset por espejo: x fuente = w - (x + dx))
+                    let srcX = w - (x + dx); // Ajuste para espejo
+                    let srcY = y + dy;
+                    srcX = Math.max(0, Math.min(w - 1, srcX));
+                    srcY = Math.max(0, Math.min(h - 1, srcY));
+
+                    // Interpolación bilinear para suavidad y velocidad
+                    const x1 = Math.floor(srcX), y1 = Math.floor(srcY);
+                    const x2 = Math.min(x1 + 1, w - 1), y2 = Math.min(y1 + 1, h - 1);
+                    const fx = srcX - x1, fy = srcY - y1;
+
+                    // Obtener píxeles corners
+                    const i11 = (y1 * w + x1) * 4;
+                    const i12 = (y1 * w + x2) * 4;
+                    const i21 = (y2 * w + x1) * 4;
+                    const i22 = (y2 * w + x2) * 4;
+
+                    // Interpolar R, G, B
+                    for (let c = 0; c < 3; c++) {
+                        const p11 = sourceData[i11 + c];
+                        const p12 = sourceData[i12 + c];
+                        const p21 = sourceData[i21 + c];
+                        const p22 = sourceData[i22 + c];
+                        const interp = p11 * (1 - fx) * (1 - fy) + p12 * fx * (1 - fy) + p21 * (1 - fx) * fy + p22 * fx * fy;
+                        destData[(y * w + x) * 4 + c] = Math.round(interp);
+                    }
+                    destData[(y * w + x) * 4 + 3] = 255; // Alpha fijo
+                }
+            }
+
+            imageData.data.set(destData);
+            ctx.putImageData(imageData, 0, 0);
+        }
+
+        // Eventos
+        intensitySlider.addEventListener('input', (e) => {
+            valueSpan.textContent = e.target.value;
+        });
+
+        function toggleDistorsion() {
+            distortionActive = !distortionActive;
+            distorsionBtn.textContent = distortionActive ? 'Desactivar Distorsión' : 'Distorsión';
+            distorsionBtn.classList.toggle('active');
+            // Si se desactiva, no resetear intensidad, solo pausar efecto
+        }
+
+        function setIntensity(val) {
+            intensitySlider.value = val;
+            valueSpan.textContent = val;
+        }
+
+        function resetDistortion() {
+            setIntensity(0);
+            distortionActive = false;
+            distorsionBtn.textContent = 'Distorsión';
+            distorsionBtn.classList.remove('active');
+        }
+
+        function closeInstructions() {
+            instructions.style.display = 'none';
+            controls.classList.remove('hidden');
+        }
+
+        // Ocultar controles en landscape pequeño
+        window.addEventListener('orientationchange', () => {
+            if (window.innerHeight < 500) {
+                controls.classList.add('hidden');
+                setTimeout(() => controls.classList.remove('hidden'), 1000);
+            }
+        });
+
+        // Cleanup
+        window.addEventListener('beforeunload', () => {
+            if (stream) stream.getTracks().forEach(track => track.stop());
+            cancelAnimationFrame(animationId);
+        });
+
+        // Auto-fullscreen touch en móvil
+        if (/Mobi|Android/i.test(navigator.userAgent)) {
+            document.addEventListener('touchstart', () => {
+                if (!document.fullscreenElement) {
+                    document.documentElement.requestFullscreen().catch(() => {});
+                }
+            }, { once: true });
+        }
+
+        // Iniciar
+        initCamera();
+    </script>
+</body>
+</html>
