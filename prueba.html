@@ -3,152 +3,139 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
-  <title>Espejo Distorsionado + Paisaje Sonoro</title>
+  <title>Espejo Distorsionado: Reflexión Optimizada</title>
   <style>
     body {
-      margin: 0;
-      padding: 0;
+      margin: 0; padding: 0;
       font-family: Arial, sans-serif;
-      background: #000;
-      color: #fff;
-      display: flex;
-      flex-direction: column;
-      align-items: center;
-      justify-content: center;
-      height: 100vh;
-      overflow: hidden;
+      background: #000; color: #fff;
+      display: flex; flex-direction: column;
+      align-items: center; justify-content: center;
+      height: 100vh; overflow: hidden;
     }
     #container {
-      position: relative;
-      width: 100vw;
-      height: 100vh;
-      display: flex;
-      flex-direction: column;
+      position: relative; width: 100vw; height: 100vh;
+      display: flex; flex-direction: column;
     }
     #video, #canvas {
-      position: absolute;
-      top: 0; left: 0;
-      width: 100%; height: 100%;
-      object-fit: cover;
+      position: absolute; top: 0; left: 0;
+      width: 100%; height: 100%; object-fit: cover;
     }
     #controls {
-      position: absolute;
-      bottom: 50px;
-      left: 50%;
-      transform: translateX(-50%);
-      z-index: 10;
+      position: absolute; bottom: 50px; left: 50%;
+      transform: translateX(-50%); z-index: 10;
       text-align: center;
-      background: rgba(75, 0, 130, 0.7);
-      padding: 8px;
-      border-radius: 10px;
-      width: 90%;
-      max-width: 350px;
-      box-shadow: 0 4px 15px rgba(75, 0, 130, 0.3);
+      background: rgba(75,0,130,0.7);
+      padding: 8px; border-radius: 10px;
+      width: 90%; max-width: 350px;
       transition: opacity 0.3s;
+      box-shadow: 0 4px 15px rgba(75,0,130,0.3);
     }
     #controls.hidden { opacity: 0; pointer-events: none; }
-    #intensity { width: 100%; height: 22px; margin: 3px 0; }
+    #intensity { width: 100%; margin: 3px 0; height: 22px; }
     #distorsion-btn, #reset, #presets button {
       background: linear-gradient(to right, #4B0082, #2F004F);
-      color: #fff;
-      border: none;
-      padding: 6px 8px;
-      margin: 1px;
-      border-radius: 8px;
-      font-size: 12px;
-      min-width: 60px;
+      color: #fff; border: none; padding: 6px 8px;
+      margin: 1px; border-radius: 8px; font-size: 12px;
+      touch-action: manipulation; min-width: 60px;
+      transition: transform 0.1s, box-shadow 0.2s;
     }
     #distorsion-btn {
       background: linear-gradient(to right, #7CFC00, #32CD32);
     }
-    #distorsion-btn.active { 
+    #distorsion-btn.active {
       background: linear-gradient(to right, #32CD32, #228B22);
       transform: scale(1.05);
-      box-shadow: 0 2px 10px rgba(124, 252, 0, 0.5);
+      box-shadow: 0 2px 10px rgba(124,252,0,0.5);
     }
-    #instructions, #loading, #error, #fps {
-      position: absolute; z-index: 15;
-      background: rgba(75, 0, 130, 0.7);
-      padding: 12px; border-radius: 10px;
-      text-align: center;
+    #instructions {
+      position: absolute; top: 20px; left: 20px; right: 20px;
+      background: rgba(75,0,130,0.7); padding: 12px; border-radius: 10px;
+      z-index: 5; display: none; text-align: center;
+      box-shadow: 0 4px 15px rgba(75,0,130,0.3);
     }
-    #instructions { top: 20px; left: 20px; right: 20px; display: none; }
-    #loading, #error { top: 50%; left: 50%; transform: translate(-50%, -50%); }
-    #fps { top: 10px; right: 10px; font-size: 11px; }
-    #presets { display: flex; flex-wrap: wrap; justify-content: space-evenly; gap: 2px; margin-top: 3px; }
-    /* --- Botón del paisaje sonoro --- */
+    #loading, #error {
+      position: absolute; top: 50%; left: 50%;
+      transform: translate(-50%, -50%);
+      z-index: 15; font-size: 16px; text-align: center;
+      background: rgba(75,0,130,0.8); padding: 12px;
+      border-radius: 10px; color: #fff;
+    }
+    #fps {
+      position: absolute; top: 10px; right: 10px;
+      font-size: 11px; z-index: 10;
+      background: rgba(75,0,130,0.6);
+      padding: 4px; border-radius: 5px; color: #fff;
+    }
+    #presets {
+      display: flex; flex-wrap: wrap; justify-content: space-evenly;
+      margin-top: 3px; gap: 2px;
+    }
     #sonido {
-      position: fixed;
-      top: 50%;
-      left: 5px;
+      position: fixed; top: 50%; left: 10px;
       transform: translateY(-50%);
-      background: rgba(0,0,0,0.6);
-      color: #fff;
-      padding: 6px;
-      border-radius: 50%;
-      font-size: 12px;
-      width: 50px; height: 50px;
-      display: flex; align-items: center; justify-content: center;
-      cursor: pointer;
-      z-index: 1000;
-      text-align: center;
+      background: rgba(0,0,0,0.7); color: white;
+      font-size: 20px; padding: 12px; border-radius: 50%;
+      cursor: pointer; z-index: 999; user-select: none;
     }
-    #sonido:hover { background: rgba(255,255,255,0.1); }
-    /* --- Modal de advertencia --- */
-    #warning-modal {
-      position: fixed; top:0; left:0;
-      width:100%; height:100%;
-      background: rgba(0,0,0,0.9);
+    #sonido:hover { background: rgba(255,255,255,0.2); }
+
+    /* Modal de advertencia */
+    #warningModal {
+      position: fixed; top:0; left:0; width:100%; height:100%;
+      background: rgba(0,0,0,0.85);
       display: flex; align-items: center; justify-content: center;
       z-index: 2000;
     }
-    #warning-box {
-      background: #111; padding: 20px; border-radius: 10px;
+    #warningBox {
+      background: #111; padding: 20px; border-radius: 12px;
       max-width: 400px; text-align: center;
-      color: #fff;
-      box-shadow: 0 0 20px rgba(255,0,0,0.5);
+      box-shadow: 0 4px 20px rgba(0,0,0,0.5);
     }
-    #warning-box h2 { margin-top: 0; color: #ff4444; }
-    #warning-box button {
-      margin: 10px; padding: 8px 16px;
-      border: none; border-radius: 5px; cursor: pointer;
+    #warningBox button {
+      margin: 10px; padding: 8px 14px;
+      border: none; border-radius: 8px;
+      cursor: pointer; font-size: 14px;
     }
-    #accept-btn { background: #28a745; color: white; }
-    #cancel-btn { background: #dc3545; color: white; }
+    #acceptBtn { background: #32CD32; color: white; }
+    #cancelBtn { background: #B22222; color: white; }
   </style>
 </head>
 <body>
-  <!-- Aviso -->
-  <div id="warning-modal">
-    <div id="warning-box">
-      <h2>⚠️ Aviso de advertencia</h2>
-      <p>Esta obra usa cámara y paisaje sonoro con efectos de distorsión.</p>
-      <p>- Puede ser perturbador para personas con epilepsia fotosensible o ansiedad.<br>
-         - Recomendado en un espacio tranquilo y con volumen moderado.</p>
-      <p>¿Deseas continuar?</p>
-      <button id="accept-btn">Aceptar</button>
-      <button id="cancel-btn">Cancelar</button>
+  <!-- Aviso de advertencia -->
+  <div id="warningModal">
+    <div id="warningBox">
+      <h2>⚠️ Aviso</h2>
+      <p>Esta obra utiliza <strong>cámara y sonido</strong> en tiempo real.<br>
+      Incluye distorsiones visuales y auditivas que pueden resultar perturbadoras.</p>
+      <ul style="text-align:left; font-size:14px;">
+        <li>No recomendada para personas con epilepsia fotosensible o ansiedad severa.</li>
+        <li>Interactúa en un espacio tranquilo y con volumen moderado.</li>
+        <li>El uso de cámara es opcional, pero necesario para la experiencia completa.</li>
+      </ul>
+      <button id="acceptBtn">Aceptar</button>
+      <button id="cancelBtn">Cancelar</button>
     </div>
   </div>
 
-  <!-- Contenedor principal -->
   <div id="container" style="display:none;">
     <video id="video" autoplay muted playsinline></video>
     <canvas id="canvas"></canvas>
     <div id="instructions">
       <h2>Espejo Distorsionado</h2>
-      <p>Explora distorsiones en tu reflejo. Usa la cámara frontal.</p>
-      <button onclick="closeInstructions()">Iniciar Experiencia</button>
+      <p>Explora distorsiones en tu reflejo para reflexionar sobre la dismorfia corporal. Usa la cámara frontal.</p>
+      <p><strong>Efecto:</strong> Ondas + bulge (efectos variados). Activa con el botón "Distorsión".</p>
+      <button onclick="closeInstructions()" style="background: linear-gradient(to right, #4B0082, #2F004F); border:none; color:white; padding:8px 12px; border-radius:5px; font-size:14px;">Iniciar Experiencia</button>
     </div>
-    <div id="loading">Cargando cámara...</div>
+    <div id="loading">Cargando cámara... Otorga permisos.</div>
     <div id="error" style="display:none;">
-      <p>Error en cámara.</p>
-      <button onclick="initCamera()">Reintentar</button>
+      <p>Error en cámara. Verifica permisos o HTTPS.</p>
+      <button onclick="initCamera()" style="background: linear-gradient(to right, #4B0082, #2F004F); border:none; color:white; padding:8px 12px; border-radius:5px; font-size:14px;">Reintentar</button>
     </div>
     <div id="fps">FPS: 0</div>
     <div id="controls">
-      <label for="intensity">Intensidad: <span id="value">0</span></label>
-      <input type="range" id="intensity" min="0" max="100" value="0">
+      <label for="intensity" style="font-size:14px;">Intensidad (0-100): <span id="value">0</span></label>
+      <input type="range" id="intensity" min="0" max="100" value="0" step="1">
       <button id="distorsion-btn" onclick="toggleDistorsion()">Distorsión</button>
       <div id="presets">
         <button onclick="setIntensity(25)">Bajo</button>
@@ -158,24 +145,22 @@
         <button id="reset" onclick="resetDistortion()">Reset</button>
       </div>
     </div>
-    <!-- Botón del paisaje sonoro -->
+    <!-- Botón de sonido -->
     <div id="sonido" onclick="toggleSoundscape()">▶</div>
   </div>
 
   <script>
-    /********** AVISO **********/
-    const warningModal = document.getElementById('warning-modal');
-    const container = document.getElementById('container');
-    document.getElementById('accept-btn').onclick = () => {
-      warningModal.style.display = 'none';
-      container.style.display = 'flex';
+    /*** ADVERTENCIA ***/
+    document.getElementById("acceptBtn").onclick = () => {
+      document.getElementById("warningModal").style.display = "none";
+      document.getElementById("container").style.display = "block";
       initCamera();
     };
-    document.getElementById('cancel-btn').onclick = () => {
+    document.getElementById("cancelBtn").onclick = () => {
       window.location.href = "https://www.google.com";
     };
 
-    /********** ESPEJO DISTORSIONADO **********/
+    /*** VISUAL (tu código intacto) ***/
     const video = document.getElementById('video');
     const canvas = document.getElementById('canvas');
     const ctx = canvas.getContext('2d');
@@ -184,78 +169,170 @@
     const distorsionBtn = document.getElementById('distorsion-btn');
     const loading = document.getElementById('loading');
     const error = document.getElementById('error');
+    const controls = document.getElementById('controls');
     const fpsEl = document.getElementById('fps');
     const instructions = document.getElementById('instructions');
-    let distortionActive = false, animationId, stream, lastTime=0, frameCount=0;
+
+    let distortionActive = false;
+    let animationId, stream, lastTime=0, frameCount=0;
 
     async function initCamera() {
       try {
-        loading.style.display = 'block'; error.style.display='none';
-        const constraints = { video: { facingMode:'user', width:640, height:480 }};
+        loading.style.display = 'block';
+        error.style.display = 'none';
+        const constraints = {
+          video: {
+            facingMode: 'user',
+            width: { ideal: window.innerWidth < 768 ? 480 : 640 },
+            height:{ ideal: window.innerHeight < 768 ? 360 : 480 }
+          }
+        };
         stream = await navigator.mediaDevices.getUserMedia(constraints);
         video.srcObject = stream;
         video.onloadedmetadata = () => {
-          canvas.width = video.videoWidth; canvas.height = video.videoHeight;
-          loading.style.display = 'none'; instructions.style.display = 'block'; video.play(); render();
+          canvas.width = video.videoWidth;
+          canvas.height = video.videoHeight;
+          loading.style.display = 'none';
+          instructions.style.display = 'block';
+          video.play();
+          render();
         };
-      } catch (err) {
-        loading.style.display='none'; error.style.display='block'; console.error(err);
+      } catch(err) {
+        loading.style.display = 'none';
+        error.style.display = 'block';
+        console.error('Error cámara:', err);
       }
     }
 
     function render(currentTime=0) {
       if (video.readyState === video.HAVE_ENOUGH_DATA) {
-        ctx.save(); ctx.scale(-1,1);
+        ctx.save();
+        ctx.scale(-1,1);
         ctx.drawImage(video, -canvas.width,0,canvas.width,canvas.height);
         ctx.restore();
+
         const intensity = parseInt(intensitySlider.value);
-        if (distortionActive && intensity>0) distortImage(intensity, currentTime*0.001);
-        frameCount++; if (currentTime-lastTime>=1000){ fpsEl.textContent=`FPS:${frameCount}`; frameCount=0; lastTime=currentTime; }
+        if (distortionActive && intensity>0) {
+          distortImage(intensity, currentTime*0.001);
+        }
+
+        frameCount++;
+        if (currentTime-lastTime>=1000) {
+          fpsEl.textContent = `FPS: ${Math.round(frameCount*1000/(currentTime-lastTime))}`;
+          frameCount=0; lastTime=currentTime;
+        }
       }
-      animationId = requestAnimationFrame(render);
+      animationId=requestAnimationFrame(render);
     }
 
     function distortImage(intensity,time) {
       let imageData=ctx.getImageData(0,0,canvas.width,canvas.height);
-      let src=new Uint8ClampedArray(imageData.data); let dest=new Uint8ClampedArray(src.length);
+      let sourceData=new Uint8ClampedArray(imageData.data);
+      let destData=new Uint8ClampedArray(sourceData.length);
       const w=canvas.width,h=canvas.height,cx=w/2,cy=h/2;
-      for(let y=0;y<h;y++){for(let x=0;x<w;x++){
-        let dx=Math.sin(y*0.02+time*2)*(intensity/100)*8;
-        let dy=Math.cos(x*0.015+time*3)*(intensity/100)*6;
-        const d=Math.sqrt((x-cx)**2+(y-cy)**2);
-        if(d<150){const f=(150-d)/150*(intensity/100)*0.03; dx+=(x-cx)*f; dy+=(y-cy)*f;}
-        let srcX=w-(x+dx),srcY=y+dy; srcX=Math.max(0,Math.min(w-1,srcX)); srcY=Math.max(0,Math.min(h-1,srcY));
-        const i=(Math.floor(srcY)*w+Math.floor(srcX))*4;
-        for(let c=0;c<3;c++) dest[(y*w+x)*4+c]=src[i+c];
-        dest[(y*w+x)*4+3]=255;
-      }}
-      imageData.data.set(dest); ctx.putImageData(imageData,0,0);
+
+      for(let y=0;y<h;y++){
+        for(let x=0;x<w;x++){
+          let dx=Math.sin(y*0.02+time*2)*(intensity/100)*8;
+          let dy=Math.cos(x*0.015+time*3)*(intensity/100)*6;
+          const bulgeDist=Math.sqrt((x-cx)**2+(y-cy)**2);
+          if(bulgeDist<150){
+            const bulgeFactor=(150-bulgeDist)/150*(intensity/100)*0.03;
+            dx+=(x-cx)*bulgeFactor; dy+=(y-cy)*bulgeFactor;
+          }
+          let srcX=w-(x+dx),srcY=y+dy;
+          srcX=Math.max(0,Math.min(w-1,srcX));
+          srcY=Math.max(0,Math.min(h-1,srcY));
+          const x1=Math.floor(srcX),y1=Math.floor(srcY);
+          const x2=Math.min(x1+1,w-1),y2=Math.min(y1+1,h-1);
+          const fx=srcX-x1,fy=srcY-y1;
+          const i11=(y1*w+x1)*4,i12=(y1*w+x2)*4,i21=(y2*w+x1)*4,i22=(y2*w+x2)*4;
+          for(let c=0;c<3;c++){
+            const p11=sourceData[i11+c],p12=sourceData[i12+c];
+            const p21=sourceData[i21+c],p22=sourceData[i22+c];
+            const interp=p11*(1-fx)*(1-fy)+p12*fx*(1-fy)+p21*(1-fx)*fy+p22*fx*fy;
+            destData[(y*w+x)*4+c]=Math.round(interp);
+          }
+          destData[(y*w+x)*4+3]=255;
+        }
+      }
+      imageData.data.set(destData);
+      ctx.putImageData(imageData,0,0);
     }
 
-    intensitySlider.oninput=e=>valueSpan.textContent=e.target.value;
-    function toggleDistorsion(){ distortionActive=!distortionActive; distorsionBtn.classList.toggle('active'); }
-    function setIntensity(v){ intensitySlider.value=v; valueSpan.textContent=v; }
-    function resetDistortion(){ setIntensity(0); distortionActive=false; distorsionBtn.classList.remove('active'); }
-    function closeInstructions(){ instructions.style.display='none'; }
+    intensitySlider.addEventListener('input',(e)=>{valueSpan.textContent=e.target.value;});
+    function toggleDistorsion(){distortionActive=!distortionActive;
+      distorsionBtn.textContent=distortionActive?'Desactivar Distorsión':'Distorsión';
+      distorsionBtn.classList.toggle('active');}
+    function setIntensity(val){intensitySlider.value=val;valueSpan.textContent=val;}
+    function resetDistortion(){setIntensity(0);distortionActive=false;
+      distorsionBtn.textContent='Distorsión';distorsionBtn.classList.remove('active');}
+    function closeInstructions(){instructions.style.display='none';controls.classList.remove('hidden');}
+    window.addEventListener('beforeunload',()=>{if(stream) stream.getTracks().forEach(track=>track.stop());cancelAnimationFrame(animationId);});
 
-    /********** PAISAJE SONORO **********/
-    let audioCtx, masterGain, isPlaying=false;
-    function initAudio(){
-      if(!audioCtx){
-        audioCtx=new (window.AudioContext||window.webkitAudioContext)();
-        masterGain=audioCtx.createGain(); masterGain.gain.value=0.3;
+    /*** AUDIO ***/
+    let audioCtx, masterGain;
+    let activeNodes = [];
+    let isPlaying = false;
+
+    function initAudio() {
+      if (!audioCtx) {
+        audioCtx = new (window.AudioContext||window.webkitAudioContext)();
+        masterGain = audioCtx.createGain();
+        masterGain.gain.value = 0.25;
         masterGain.connect(audioCtx.destination);
       }
     }
-    function toggleSoundscape(){
-      if(isPlaying){ masterGain.gain.setValueAtTime(0,audioCtx.currentTime); isPlaying=false; document.getElementById("sonido").textContent="▶"; }
-      else { initAudio(); playDrone(); isPlaying=true; document.getElementById("sonido").textContent="■"; }
+
+    function startDrone(freq=110,type="sine",volume=0.1){
+      const osc=audioCtx.createOscillator();
+      const gain=audioCtx.createGain();
+      osc.type=type; osc.frequency.value=freq; gain.gain.value=volume;
+      osc.connect(gain); gain.connect(masterGain);
+      osc.start(); activeNodes.push({osc,gain});
     }
-    function playDrone(){
-      const osc=audioCtx.createOscillator(); osc.type="sine"; osc.frequency.value=100;
-      const gain=audioCtx.createGain(); gain.gain.value=0.2; osc.connect(gain); gain.connect(masterGain);
-      osc.start(); osc.stop(audioCtx.currentTime+5);
+
+    function startNoise(volume=0.05){
+      const bufferSize=2*audioCtx.sampleRate;
+      const buffer=audioCtx.createBuffer(1,bufferSize,audioCtx.sampleRate);
+      const data=buffer.getChannelData(0);
+      for(let i=0;i<bufferSize;i++){data[i]=Math.random()*2-1;}
+      const noise=audioCtx.createBufferSource();
+      noise.buffer=buffer; noise.loop=true;
+      const noiseGain=audioCtx.createGain(); noiseGain.gain.value=volume;
+      noise.connect(noiseGain); noiseGain.connect(masterGain);
+      noise.start(); activeNodes.push({osc:noise,gain:noiseGain});
     }
+
+    function startLFO(targetGain,freq=0.1,depth=0.5){
+      const lfo=audioCtx.createOscillator();
+      const lfoGain=audioCtx.createGain();
+      lfo.frequency.value=freq; lfoGain.gain.value=depth*targetGain.gain.value;
+      lfo.connect(lfoGain); lfoGain.connect(targetGain.gain);
+      lfo.start(); activeNodes.push({osc:lfo,gain:lfoGain});
+    }
+
+    function startSoundscape(){
+      initAudio(); stopSoundscape();
+      startDrone(55,"sine",0.08);
+      startDrone(110,"triangle",0.05);
+      startNoise(0.03);
+      const midDrone=audioCtx.createOscillator();
+      midDrone.type="sawtooth"; midDrone.frequency.value=220;
+      const midGain=audioCtx.createGain(); midGain.gain.value=0.04;
+      midDrone.connect(midGain); midGain.connect(masterGain);
+      midDrone.start(); activeNodes.push({osc:midDrone,gain:midGain});
+      startLFO(midGain,0.05,0.02);
+      isPlaying=true; document.getElementById("sonido").textContent="■";
+    }
+
+    function stopSoundscape(){
+      activeNodes.forEach(node=>{try{node.osc.stop();}catch(e){}});
+      activeNodes=[]; isPlaying=false;
+      if(document.getElementById("sonido")){document.getElementById("sonido").textContent="▶";}
+    }
+
+    function toggleSoundscape(){if(!isPlaying){startSoundscape();}else{stopSoundscape();}}
   </script>
 </body>
 </html>
