@@ -1,663 +1,214 @@
 <!DOCTYPE html>
 <html lang="es">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
-    <title>Espejo Distorsionado: Reflexión Optimizada</title>
-    <style>
-        /* ------------------ tu CSS original ------------------ */
-        body {
-            margin: 0;
-            padding: 0;
-            font-family: Arial, sans-serif;
-            background: #000;
-            color: #fff;
-            display: flex;
-            flex-direction: column;
-            align-items: center;
-            justify-content: center;
-            height: 100vh;
-            overflow: hidden;
-        }
-        #container {
-            position: relative;
-            width: 100vw;
-            height: 100vh;
-            display: flex;
-            flex-direction: column;
-        }
-        #video {
-            position: absolute;
-            top: 0;
-            left: 0;
-            width: 100%;
-            height: 100%;
-            object-fit: cover;
-        }
-        #canvas {
-            position: absolute;
-            top: 0;
-            left: 0;
-            width: 100%;
-            height: 100%;
-            object-fit: cover;
-        }
-        #controls {
-            position: absolute;
-            bottom: 50px;
-            left: 50%;
-            transform: translateX(-50%);
-            z-index: 10;
-            text-align: center;
-            background: rgba(75, 0, 130, 0.7);
-            padding: 8px;
-            border-radius: 10px;
-            width: 90%;
-            max-width: 350px;
-            transition: opacity 0.3s;
-            box-shadow: 0 4px 15px rgba(75, 0, 130, 0.3);
-        }
-        #controls.hidden { opacity: 0; pointer-events: none; }
-        #intensity {
-            width: 100%;
-            margin: 3px 0;
-            height: 22px;
-        }
-        #distorsion-btn, #reset, #presets button {
-            background: linear-gradient(to right, #4B0082, #2F004F);
-            color: #fff;
-            border: none;
-            padding: 6px 8px;
-            margin: 1px;
-            border-radius: 8px;
-            font-size: 12px;
-            touch-action: manipulation;
-            min-width: 60px;
-            transition: transform 0.1s, box-shadow 0.2s;
-        }
-        #distorsion-btn {
-            background: linear-gradient(to right, #7CFC00, #32CD32);
-        }
-        #distorsion-btn.active { 
-            background: linear-gradient(to right, #32CD32, #228B22);
-            transform: scale(1.05);
-            box-shadow: 0 2px 10px rgba(124, 252, 0, 0.5);
-        }
-        #instructions {
-            position: absolute;
-            top: 20px;
-            left: 20px;
-            right: 20px;
-            background: rgba(75, 0, 130, 0.7);
-            padding: 12px;
-            border-radius: 10px;
-            z-index: 5;
-            display: none;
-            text-align: center;
-            box-shadow: 0 4px 15px rgba(75, 0, 130, 0.3);
-        }
-        #loading, #error {
-            position: absolute;
-            top: 50%;
-            left: 50%;
-            transform: translate(-50%, -50%);
-            z-index: 15;
-            font-size: 16px;
-            text-align: center;
-            background: rgba(75, 0, 130, 0.8);
-            padding: 12px;
-            border-radius: 10px;
-            color: #fff;
-        }
-        #fps { 
-            position: absolute; 
-            top: 10px; 
-            right: 10px; 
-            font-size: 11px; 
-            z-index: 10; 
-            background: rgba(75, 0, 130, 0.6); 
-            padding: 4px;
-            border-radius: 5px;
-            color: #fff;
-        }
-        #presets {
-            display: flex;
-            flex-wrap: wrap;
-            justify-content: space-evenly;
-            margin-top: 3px;
-            gap: 2px;
-        }
+  <meta charset="UTF-8">
+  <title>Dismorfia – Obra Interactiva</title>
+  <style>
+    body, html {
+      margin: 0;
+      padding: 0;
+      overflow: hidden;
+      background: black;
+      color: white;
+      font-family: sans-serif;
+    }
 
-        /* responsiveness (mantengo tus reglas) */
-        @media (max-width: 768px) {
-            #controls { width: 95%; padding: 6px; bottom: 70px; max-width: none; }
-            #instructions { font-size: 13px; padding: 10px; }
-            body { font-size: 15px; }
-            #presets button, #distorsion-btn { padding: 6px 6px; font-size: 12px; min-width: 55px; margin: 0; }
-            #presets { flex-direction: row; flex-wrap: nowrap; justify-content: space-evenly; margin-top: 2px; gap: 1px; }
-            label { font-size: 13px; }
-        }
-        @media (orientation: landscape) and (max-height: 500px) {
-            #controls { bottom: 45px; padding: 4px; opacity: 0.8; width: 95%; }
-            #distorsion-btn, #reset, #presets button { padding: 5px 6px; min-width: 50px; font-size: 11px; }
-            #presets { margin-top: 1px; gap: 1px; flex-wrap: nowrap; justify-content: space-around; }
-            #intensity { height: 20px; margin: 2px 0; }
-        }
+    video, canvas {
+      position: absolute;
+      top: 0; left: 0;
+      width: 100%; height: 100%;
+      object-fit: cover;
+    }
 
-        /* ------------------ modal y sonido ------------------ */
-        #warningModal {
-            position: fixed; top:0; left:0; width:100%; height:100%;
-            background: rgba(0,0,0,0.85);
-            display:flex; align-items:center; justify-content:center;
-            z-index:2000;
-        }
-        #warningBox {
-            background: #111; padding:20px; border-radius:10px;
-            max-width:420px; text-align:center;
-            color:white; font-family:sans-serif;
-            box-shadow:0 0 20px rgba(255,255,255,0.06);
-        }
-        #warningBox ul { text-align:left; margin: 12px 0; padding-left: 18px; }
-        #warningBox button { margin:10px; padding:8px 16px; border:none; border-radius:5px; cursor:pointer; font-weight:bold; }
-        #acceptBtn { background: #32CD32; color:white; }
-        #cancelBtn { background: #8B0000; color:white; }
+    /* Modal de advertencia */
+    .modal {
+      position: fixed;
+      z-index: 2000;
+      left: 0; top: 0;
+      width: 100%; height: 100%;
+      background: rgba(0,0,0,0.85);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+    .modal-content {
+      background: #111;
+      padding: 20px;
+      border-radius: 10px;
+      max-width: 500px;
+      text-align: center;
+      box-shadow: 0 0 15px rgba(255,255,255,0.2);
+    }
+    .modal-content h2 { margin-top: 0; color: #f33; }
+    .modal-content ul { text-align: left; }
+    .modal-content button {
+      margin: 10px;
+      padding: 10px 20px;
+      border: none;
+      border-radius: 5px;
+      cursor: pointer;
+      font-weight: bold;
+    }
+    .accept { background: #0a0; color: white; }
+    .cancel { background: #333; color: white; }
 
-        /* botón paisaje sonoro (inicialmente oculto hasta aceptar) */
-        #sonido {
-            position: fixed;
-            top: 50%;
-            left: 5px;
-            transform: translateY(-50%);
-            background: rgba(0,0,0,0.6);
-            color: #fff;
-            padding: 6px;
-            border-radius: 50%;
-            font-family: sans-serif;
-            font-size: 12px;
-            width: 50px;
-            height: 50px;
-            display: none; /* oculto hasta aceptar modal */
-            align-items: center;
-            justify-content: center;
-            cursor: pointer;
-            z-index: 1800;
-            text-align: center;
-        }
-        #sonido:hover { background: rgba(255,255,255,0.08); }
-
-    </style>
+    /* Botón de sonido */
+    #sonido {
+      position: fixed;
+      top: 50%;
+      left: 10px;
+      transform: translateY(-50%);
+      background: rgba(0,0,0,0.7);
+      color: white;
+      font-size: 20px;
+      padding: 12px;
+      border-radius: 50%;
+      cursor: pointer;
+      z-index: 1500;
+      user-select: none;
+    }
+    #sonido:hover {
+      background: rgba(255,255,255,0.2);
+    }
+  </style>
 </head>
 <body>
-    <!-- Modal de advertencia -->
-    <div id="warningModal">
-      <div id="warningBox">
-        <h2>⚠️ Aviso de advertencia</h2>
-        <p>Esta obra utiliza <strong>cámara</strong> y <strong>sonido</strong> en tiempo real.<br>
-        Las distorsiones visuales y auditivas pueden resultar perturbadoras.</p>
-        <ul>
-          <li>No recomendada para personas con <strong>epilepsia fotosensible</strong> o <strong>ansiedad severa</strong>.</li>
-          <li>Se recomienda interactuar en un espacio tranquilo y con volumen moderado.</li>
-          <li>El uso de la cámara es opcional, pero necesario para la experiencia completa.</li>
-        </ul>
-        <div>
-          <button id="acceptBtn">Aceptar</button>
-          <button id="cancelBtn">Cancelar</button>
-        </div>
+  <!-- Modal de advertencia -->
+  <div id="warningModal" class="modal">
+    <div class="modal-content">
+      <h2>⚠️ Aviso de advertencia</h2>
+      <p>Esta obra utiliza cámara y sonido en tiempo real.  
+      Las distorsiones visuales y auditivas pueden resultar perturbadoras.</p>
+      <ul>
+        <li>No recomendada para personas con <strong>epilepsia fotosensible</strong> o <strong>ansiedad severa</strong>.</li>
+        <li>Se recomienda interactuar en un <strong>espacio tranquilo</strong>, con <strong>volumen moderado</strong>.</li>
+        <li>El uso de la cámara es opcional, pero sin ella la obra no funcionará de forma completa.</li>
+      </ul>
+      <div>
+        <button class="accept" onclick="closeModal()">Acepto</button>
+        <button class="cancel" onclick="window.location.href='https://google.com'">Cancelar</button>
       </div>
     </div>
+  </div>
 
-    <!-- Contenedor principal (oculto hasta aceptar modal) -->
-    <div id="container" style="display:none;">
-        <video id="video" autoplay muted playsinline></video>
-        <canvas id="canvas"></canvas>
+  <!-- Obra visual -->
+  <video id="video" autoplay playsinline muted></video>
+  <canvas id="canvas"></canvas>
 
-        <div id="instructions">
-            <h2>Espejo Distorsionado </h2>
-            <p>Explora distorsiones en tu reflejo para reflexionar sobre la dismorfia corporal. Usa la cámara frontal.</p>
-            <p><strong>Efecto:</strong> Ondas + bulge (efectos variados). Activa con el botón "Distorsión".</p>
-            <button onclick="closeInstructions()" style="background: linear-gradient(to right, #4B0082, #2F004F); border: none; color: white; padding: 8px 12px; border-radius: 5px; font-size: 14px;">Iniciar Experiencia</button>
-        </div>
+  <!-- Botón de paisaje sonoro -->
+  <div id="sonido" onclick="toggleSoundscape()">▶</div>
 
-        <div id="loading">Cargando cámara... Otorga permisos.</div>
-        <div id="error" style="display: none;">
-            <p>Error en cámara. Verifica permisos o HTTPS.</p>
-            <button onclick="initCamera()" style="background: linear-gradient(to right, #4B0082, #2F004F); border: none; color: white; padding: 8px 12px; border-radius: 5px; font-size: 14px;">Reintentar</button>
-        </div>
-        <div id="fps">FPS: 0</div>
+  <!-- Script modal -->
+  <script>
+    function closeModal() {
+      document.getElementById('warningModal').style.display = 'none';
+      startCamera();
+    }
+  </script>
 
-        <div id="controls" class="">
-            <label for="intensity" style="font-size: 14px;">Intensidad (0-100): <span id="value">0</span></label>
-            <input type="range" id="intensity" min="0" max="100" value="0" step="1">
-            <button id="distorsion-btn" onclick="toggleDistorsion()">Distorsión</button>
-            <div id="presets">
-                <button onclick="setIntensity(25)">Bajo</button>
-                <button onclick="setIntensity(50)">Medio</button>
-                <button onclick="setIntensity(75)">Alto</button>
-                <button onclick="setIntensity(100)">Intenso</button>
-                <button id="reset" onclick="resetDistortion()">Reset</button>
-            </div>
-        </div>
-    </div>
+  <!-- Script obra visual -->
+  <script>
+    const video = document.getElementById('video');
+    const canvas = document.getElementById('canvas');
+    const ctx = canvas.getContext('2d');
 
-    <!-- Botón paisaje sonoro (se mostrará después de aceptar modal) -->
-    <div id="sonido" onclick="toggleSoundscape()">▶</div>
+    function startCamera() {
+      navigator.mediaDevices.getUserMedia({ video: true, audio: false })
+        .then(stream => { video.srcObject = stream; })
+        .catch(err => console.error("Error cámara:", err));
+    }
 
-    <script>
-      /* ------------------ Modal y arranque ------------------ */
-      const warningModal = document.getElementById('warningModal');
-      const container = document.getElementById('container');
-      const sonidoBtn = document.getElementById('sonido');
-      document.getElementById('acceptBtn').onclick = () => {
-        warningModal.style.display = 'none';
-        container.style.display = 'block';
-        // mostrar botón de sonido una vez aceptado (evita solicitudes de audio sin gesto)
-        sonidoBtn.style.display = 'flex';
-        // iniciar cámara (pedido de permisos)
-        initCamera();
-      };
-      document.getElementById('cancelBtn').onclick = () => {
-        window.location.href = "https://google.com";
-      };
+    function resize() {
+      canvas.width = window.innerWidth;
+      canvas.height = window.innerHeight;
+    }
+    window.addEventListener('resize', resize);
+    resize();
 
-      /* ------------------ Tu código original de cámara/distorsión ------------------ */
-      const video = document.getElementById('video');
-      const canvas = document.getElementById('canvas');
-      const ctx = canvas.getContext('2d');
-      const intensitySlider = document.getElementById('intensity');
-      const valueSpan = document.getElementById('value');
-      const distorsionBtn = document.getElementById('distorsion-btn');
-      const loading = document.getElementById('loading');
-      const error = document.getElementById('error');
-      const controls = document.getElementById('controls');
-      const fpsEl = document.getElementById('fps');
-      const instructions = document.getElementById('instructions');
-
-      let distortionActive = false; // Para toggle del botón
-      let animationId;
-      let stream;
-      let lastTime = 0;
-      let frameCount = 0;
-
-      // Inicializar cámara con resolución optimizada para móviles
-      async function initCamera() {
-          try {
-              loading.style.display = 'block';
-              error.style.display = 'none';
-              const constraints = {
-                  video: { 
-                      facingMode: 'user', 
-                      width: { ideal: window.innerWidth < 768 ? 480 : 640 }, 
-                      height: { ideal: window.innerHeight < 768 ? 360 : 480 } 
-                  }
-              };
-              stream = await navigator.mediaDevices.getUserMedia(constraints);
-              video.srcObject = stream;
-              video.onloadedmetadata = () => {
-                  canvas.width = video.videoWidth;
-                  canvas.height = video.videoHeight;
-                  loading.style.display = 'none';
-                  instructions.style.display = 'block';
-                  video.play();
-                  render();
-              };
-          } catch (err) {
-              loading.style.display = 'none';
-              error.style.display = 'block';
-              console.error('Error cámara:', err);
-          }
-      }
-
-      // Render loop optimizado
-      function render(currentTime = 0) {
-          if (video.readyState === video.HAVE_ENOUGH_DATA) {
-              // Dibujar video base
-              ctx.save();
-              ctx.scale(-1, 1); // Efecto espejo eficaz en canvas
-              ctx.drawImage(video, -canvas.width, 0, canvas.width, canvas.height);
-              ctx.restore();
-
-              const intensity = parseInt(intensitySlider.value);
-              if (distortionActive && intensity > 0) {
-                  distortImage(intensity, currentTime * 0.001); // Pasar tiempo para animaciones
-              }
-
-              // FPS counter (opcional)
-              frameCount++;
-              if (currentTime - lastTime >= 1000) {
-                  fpsEl.textContent = `FPS: ${Math.round(frameCount * 1000 / (currentTime - lastTime))}`;
-                  frameCount = 0;
-                  lastTime = currentTime;
-              }
-          }
-          animationId = requestAnimationFrame(render);
-      }
-
-      // Distorsión optimizada: usa array de datos directo con interpolación bilinear (solo Mode 2)
-      function distortImage(intensity, time) {
-          let imageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
-          let sourceData = new Uint8ClampedArray(imageData.data); // Copia fuente una vez
-
-          // Crear nuevo ImageData para destino
-          let destData = new Uint8ClampedArray(sourceData.length);
-          const w = canvas.width;
-          const h = canvas.height;
-          const cx = w / 2, cy = h / 2;
-
-          for (let y = 0; y < h; y++) {
-              for (let x = 0; x < w; x++) {
-                  let dx = 0, dy = 0;
-
-                  // Ondas + bulge con tiempo para fluidez
-                  dx = Math.sin(y * 0.02 + time * 2) * (intensity / 100) * 8;
-                  dy = Math.cos(x * 0.015 + time * 3) * (intensity / 100) * 6;
-                  // Bulge en centro
-                  const bulgeDist = Math.sqrt((x - cx)**2 + (y - cy)**2);
-                  if (bulgeDist < 150) {
-                      const bulgeFactor = (150 - bulgeDist) / 150 * (intensity / 100) * 0.03;
-                      dx += (x - cx) * bulgeFactor;
-                      dy += (y - cy) * bulgeFactor;
-                  }
-
-                  // Calcular posición fuente (con offset por espejo: x fuente = w - (x + dx))
-                  let srcX = w - (x + dx); // Ajuste para espejo
-                  let srcY = y + dy;
-                  srcX = Math.max(0, Math.min(w - 1, srcX));
-                  srcY = Math.max(0, Math.min(h - 1, srcY));
-
-                  // Interpolación bilinear para suavidad y velocidad
-                  const x1 = Math.floor(srcX), y1 = Math.floor(srcY);
-                  const x2 = Math.min(x1 + 1, w - 1), y2 = Math.min(y1 + 1, h - 1);
-                  const fx = srcX - x1, fy = srcY - y1;
-
-                  // Obtener píxeles corners
-                  const i11 = (y1 * w + x1) * 4;
-                  const i12 = (y1 * w + x2) * 4;
-                  const i21 = (y2 * w + x1) * 4;
-                  const i22 = (y2 * w + x2) * 4;
-
-                  // Interpolar R, G, B
-                  for (let c = 0; c < 3; c++) {
-                      const p11 = sourceData[i11 + c];
-                      const p12 = sourceData[i12 + c];
-                      const p21 = sourceData[i21 + c];
-                      const p22 = sourceData[i22 + c];
-                      const interp = p11 * (1 - fx) * (1 - fy) + p12 * fx * (1 - fy) + p21 * (1 - fx) * fy + p22 * fx * fy;
-                      destData[(y * w + x) * 4 + c] = Math.round(interp);
-                  }
-                  destData[(y * w + x) * 4 + 3] = 255; // Alpha fijo
-              }
-          }
-
-          imageData.data.set(destData);
-          ctx.putImageData(imageData, 0, 0);
-      }
-
-      // Eventos UI
-      intensitySlider.addEventListener('input', (e) => {
-          valueSpan.textContent = e.target.value;
-      });
-
-      function toggleDistorsion() {
-          distortionActive = !distortionActive;
-          distorsionBtn.textContent = distortionActive ? 'Desactivar Distorsión' : 'Distorsión';
-          distorsionBtn.classList.toggle('active');
-      }
-
-      function setIntensity(val) {
-          intensitySlider.value = val;
-          valueSpan.textContent = val;
-      }
-
-      function resetDistortion() {
-          setIntensity(0);
-          distortionActive = false;
-          distorsionBtn.textContent = 'Distorsión';
-          distorsionBtn.classList.remove('active');
-      }
-
-      function closeInstructions() {
-          instructions.style.display = 'none';
-          controls.classList.remove('hidden');
-      }
-
-      // Ocultar controles en landscape pequeño
-      window.addEventListener('orientationchange', () => {
-          if (window.innerHeight < 500) {
-              controls.classList.add('hidden');
-              setTimeout(() => controls.classList.remove('hidden'), 1000);
-          }
-      });
-
-      // Cleanup
-      window.addEventListener('beforeunload', () => {
-          if (stream) stream.getTracks().forEach(track => track.stop());
-          cancelAnimationFrame(animationId);
-      });
-
-      // Auto-fullscreen touch en móvil (tu código original)
-      if (/Mobi|Android/i.test(navigator.userAgent)) {
-          document.addEventListener('touchstart', () => {
-              if (!document.fullscreenElement) {
-                  document.documentElement.requestFullscreen().catch(() => {});
-              }
-          }, { once: true });
-      }
-
-      /* ------------------ Paisaje sonoro (completo) ------------------ */
-      let audioCtx = null;
-      let masterGain = null;
-      let convolver = null;
-      let waveShaper = null;
-      let isPlaying = false;
-      let timeouts = [];
-
-      const fases = ["Contención", "Crisis", "Fragmentación", "Distorsión", "Resolución"];
-
-      function initAudio() {
-        if (!audioCtx) {
-          audioCtx = new (window.AudioContext || window.webkitAudioContext)();
-          masterGain = audioCtx.createGain();
-          masterGain.gain.value = 0.35;
-
-          convolver = audioCtx.createConvolver();
-          const length = audioCtx.sampleRate * 3;
-          const impulse = audioCtx.createBuffer(2, length, audioCtx.sampleRate);
-          for (let c = 0; c < 2; c++) {
-            const data = impulse.getChannelData(c);
-            for (let i = 0; i < length; i++) {
-              data[i] = (Math.random() * 2 - 1) * Math.pow(1 - i / length, 2);
-            }
-          }
-          convolver.buffer = impulse;
-
-          waveShaper = audioCtx.createWaveShaper();
-          waveShaper.curve = makeDistortionCurve(400);
-          waveShaper.oversample = '4x';
-
-          // chain convolver -> waveShaper -> masterGain -> destination
-          convolver.connect(waveShaper);
-          waveShaper.connect(masterGain);
-          masterGain.connect(audioCtx.destination);
+    function draw() {
+      ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
+      let imageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
+      let data = imageData.data;
+      // Distorsión tipo onda
+      for (let y = 0; y < canvas.height; y+=2) {
+        for (let x = 0; x < canvas.width; x+=2) {
+          let index = (y * canvas.width + x) * 4;
+          let offset = Math.sin(y / 20) * 20;
+          let newX = (x + offset) % canvas.width;
+          if (newX < 0) newX += canvas.width;
+          let newIndex = (y * canvas.width + Math.floor(newX)) * 4;
+          data[index] = data[newIndex];
+          data[index+1] = data[newIndex+1];
+          data[index+2] = data[newIndex+2];
         }
       }
+      ctx.putImageData(imageData, 0, 0);
+      requestAnimationFrame(draw);
+    }
+    video.addEventListener('play', () => { draw(); });
+  </script>
 
-      function makeDistortionCurve(amount) {
-        let k = typeof amount === 'number' ? amount : 50,
-            n_samples = 44100,
-            curve = new Float32Array(n_samples),
-            deg = Math.PI / 180;
-        for (let i = 0; i < n_samples; ++i) {
-          let x = i * 2 / n_samples - 1;
-          curve[i] = (3 + k) * x * 20 * deg / (Math.PI + k * Math.abs(x));
-        }
-        return curve;
+  <!-- Script paisaje sonoro -->
+  <script>
+    let audioCtx;
+    let oscillator, noise, gainNode;
+    let soundscapeActive = false;
+
+    function initAudio() {
+      if (!audioCtx) {
+        audioCtx = new (window.AudioContext || window.webkitAudioContext)();
       }
+    }
 
-      function updateButton(text) {
-        document.getElementById("sonido").textContent = text;
+    function startSoundscape() {
+      if (!audioCtx) initAudio();
+
+      gainNode = audioCtx.createGain();
+      gainNode.gain.value = 0.15;
+      gainNode.connect(audioCtx.destination);
+
+      // Oscilador base
+      oscillator = audioCtx.createOscillator();
+      oscillator.type = "sine";
+      oscillator.frequency.setValueAtTime(220, audioCtx.currentTime);
+      oscillator.connect(gainNode);
+      oscillator.start();
+
+      // Ruido blanco
+      const bufferSize = 2 * audioCtx.sampleRate;
+      const buffer = audioCtx.createBuffer(1, bufferSize, audioCtx.sampleRate);
+      const data = buffer.getChannelData(0);
+      for (let i = 0; i < bufferSize; i++) {
+        data[i] = Math.random() * 2 - 1;
       }
+      noise = audioCtx.createBufferSource();
+      noise.buffer = buffer;
+      noise.loop = true;
+      const noiseFilter = audioCtx.createBiquadFilter();
+      noiseFilter.type = "lowpass";
+      noiseFilter.frequency.setValueAtTime(1000, audioCtx.currentTime);
+      noise.connect(noiseFilter);
+      noiseFilter.connect(gainNode);
+      noise.start();
 
-      function stopSoundscape() {
-        isPlaying = false;
-        timeouts.forEach(t => clearTimeout(t));
-        timeouts = [];
-        if (audioCtx && audioCtx.state === 'running') {
-          // silenciar de forma segura
-          try {
-            masterGain.gain.cancelScheduledValues(audioCtx.currentTime);
-            masterGain.gain.setValueAtTime(0.0001, audioCtx.currentTime + 0.02);
-            audioCtx.suspend && audioCtx.suspend();
-          } catch (e) { /* ignore */ }
-        }
-        updateButton("▶");
+      soundscapeActive = true;
+      document.getElementById("sonido").textContent = "⏸";
+    }
+
+    function stopSoundscape() {
+      if (oscillator) oscillator.stop();
+      if (noise) noise.stop();
+      soundscapeActive = false;
+      document.getElementById("sonido").textContent = "▶";
+    }
+
+    function toggleSoundscape() {
+      if (!soundscapeActive) {
+        startSoundscape();
+      } else {
+        stopSoundscape();
       }
-
-      function toggleSoundscape() {
-        if (isPlaying) {
-          stopSoundscape();
-        } else {
-          startSoundscape();
-        }
-      }
-
-      async function startSoundscape() {
-        initAudio();
-        // resume audio context if suspended
-        if (audioCtx.state === 'suspended') {
-          try { await audioCtx.resume(); } catch (e) { /* ignore */ }
-        }
-        stopSoundscape(); // limpiar antes
-        isPlaying = true;
-        updateButton("Contando...");
-
-        function connectFX(node) {
-          // enviar la señal tanto directo como a la reverb en la cadena
-          node.connect(convolver);
-          node.connect(masterGain);
-        }
-
-        function playDrone(freq, start, dur, vol = 0.08, type = "sine") {
-          const osc = audioCtx.createOscillator();
-          const gain = audioCtx.createGain();
-          const panner = audioCtx.createStereoPanner();
-          osc.type = type;
-          osc.frequency.value = freq;
-          osc.connect(gain);
-          gain.connect(panner);
-          connectFX(panner);
-          panner.pan.setValueAtTime(-1, start);
-          panner.pan.linearRampToValueAtTime(1, start + dur);
-          gain.gain.setValueAtTime(0, start);
-          gain.gain.linearRampToValueAtTime(vol, start + 2);
-          gain.gain.linearRampToValueAtTime(0.0001, start + dur);
-          osc.start(start);
-          osc.stop(start + dur + 0.1);
-        }
-
-        function heartbeat(time, intensity = 0.15) {
-          const osc = audioCtx.createOscillator();
-          const gain = audioCtx.createGain();
-          const panner = audioCtx.createStereoPanner();
-          osc.frequency.value = 60;
-          osc.type = 'sine';
-          osc.connect(gain);
-          gain.connect(panner);
-          connectFX(panner);
-          panner.pan.setValueAtTime(Math.random() * 2 - 1, time);
-          gain.gain.setValueAtTime(intensity, time);
-          gain.gain.exponentialRampToValueAtTime(0.001, time + 0.1);
-          osc.start(time);
-          osc.stop(time + 0.12);
-        }
-
-        function noiseBreath(start, dur) {
-          const noiseSource = audioCtx.createBufferSource();
-          const buffer = audioCtx.createBuffer(1, audioCtx.sampleRate * Math.max(0.2, dur), audioCtx.sampleRate);
-          const data = buffer.getChannelData(0);
-          for (let i = 0; i < data.length; i++) data[i] = (Math.random() * 2 - 1) * 0.5;
-          noiseSource.buffer = buffer;
-          noiseSource.loop = true;
-          const gain = audioCtx.createGain();
-          const panner = audioCtx.createStereoPanner();
-          noiseSource.connect(gain);
-          gain.connect(panner);
-          connectFX(panner);
-
-          // crear envolventas periódicas
-          let t = start;
-          while (t < start + dur) {
-            const panVal = Math.random() * 2 - 1;
-            panner.pan.setValueAtTime(panVal, t);
-            gain.gain.setValueAtTime(0, t);
-            gain.gain.linearRampToValueAtTime(0.25, t + 0.5);
-            gain.gain.linearRampToValueAtTime(0, t + 1.5);
-            t += 2;
-          }
-          noiseSource.start(start);
-          noiseSource.stop(start + dur + 0.1);
-        }
-
-        function metallicPing(time) {
-          const osc = audioCtx.createOscillator();
-          const gain = audioCtx.createGain();
-          const panner = audioCtx.createStereoPanner();
-          osc.type = 'square';
-          osc.frequency.value = 1000 + Math.random() * 2000;
-          osc.connect(gain);
-          gain.connect(panner);
-          connectFX(panner);
-          panner.pan.setValueAtTime(Math.random() * 2 - 1, time);
-          gain.gain.setValueAtTime(0.15, time);
-          gain.gain.exponentialRampToValueAtTime(0.0001, time + 1.5);
-          osc.start(time);
-          osc.stop(time + 1.5);
-        }
-
-        // Timeline de fases (cada fase faseDur segundos)
-        const faseDur = 60; // 60s por fase
-        fases.forEach((fase, i) => {
-          const timeoutId = setTimeout(() => {
-            if (!isPlaying) return;
-            updateButton(fase);
-            const t = audioCtx.currentTime + 0.05; // scheduling small offset
-            if (fase === "Contención") {
-              playDrone(60, t, faseDur, 0.08, "sine");
-              for (let j = 0; j < 20; j++) { heartbeat(t + j * 3, 0.08); }
-            } else if (fase === "Crisis") {
-              playDrone(70, t, faseDur, 0.1, "sine");
-              for (let j = 0; j < 50; j++) { heartbeat(t + j * 1.2, 0.2); }
-              noiseBreath(t + 2, faseDur - 2);
-            } else if (fase === "Fragmentación") {
-              for (let j = 0; j < 30; j++) { metallicPing(t + Math.random() * faseDur); }
-              noiseBreath(t, faseDur);
-            } else if (fase === "Distorsión") {
-              playDrone(100, t, faseDur, 0.09, "triangle");
-              for (let j = 0; j < 40; j++) { heartbeat(t + j * 1.5, 0.25); }
-              for (let j = 0; j < 20; j++) { metallicPing(t + Math.random() * faseDur); }
-            } else if (fase === "Resolución") {
-              playDrone(130, t, faseDur, 0.05, "triangle");
-              playDrone(261.6, t, faseDur, 0.03, "sine");
-            }
-          }, i * faseDur * 1000);
-          timeouts.push(timeoutId);
-        });
-
-        // Al final de todas las fases detener
-        const endTimeout = setTimeout(() => {
-          stopSoundscape();
-          updateButton("✦");
-        }, fases.length * faseDur * 1000);
-        timeouts.push(endTimeout);
-      }
-
-      // Map boton sonido
-      document.getElementById('sonido').addEventListener('click', () => {
-        toggleSoundscape();
-      });
-
-      // Inicial set text
-      updateButton("▶");
-
-    </script>
+    }
+  </script>
 </body>
 </html>
