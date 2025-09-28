@@ -1,0 +1,298 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Paisaje Sonoro Mejorado</title>
+  <style>
+    body {
+      background: #000;
+      color: #fff;
+      font-family: Arial, sans-serif;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      min-height: 100vh;
+      margin: 0;
+      padding: 20px;
+    }
+    .container { text-align: center; max-width: 500px; }
+    button {
+      background: #333; color: #fff; border: none;
+      padding: 20px 40px; margin: 15px; border-radius: 5px;
+      cursor: pointer; font-size: 18px;
+    }
+    button:hover { background: #555; }
+    .status {
+      margin: 30px 0; padding: 20px;
+      background: #111; border-radius: 5px;
+      font-size: 16px;
+    }
+    input[type="range"] { width: 250px; margin: 10px; }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <h1>Paisaje Sonoro Mejorado</h1>
+    <button onclick="startExperience()">▶ Iniciar (2 minutos)</button>
+    <button onclick="stopAll()">⏹ Detener</button>
+    <div>
+      <label>Volumen: </label>
+      <input type="range" id="volume" min="0" max="100" value="25" onchange="updateVolume()">
+      <span id="volumeDisplay">25%</span>
+    </div>
+    <div class="status" id="status">
+      Latidos • Piano • Respiración • Resolución armónica
+    </div>
+  </div>
+
+  <script>
+    let audioContext;
+    let masterGain;
+    let reverb;
+    let isPlaying = false;
+    let timeouts = [];
+    let fadeInterval;
+
+    function initAudio() {
+      if (!audioContext) {
+        audioContext = new (window.AudioContext || window.webkitAudioContext)();
+
+        masterGain = audioContext.createGain();
+        masterGain.gain.value = 0.0; // empieza muteado
+        masterGain.connect(audioContext.destination);
+
+        // Reverb simple (Delay + Feedback)
+        const delay = audioContext.createDelay();
+        delay.delayTime.value = 0.25;
+        const feedback = audioContext.createGain();
+        feedback.gain.value = 0.35;
+        delay.connect(feedback);
+        feedback.connect(delay);
+        delay.connect(masterGain);
+        reverb = delay;
+      }
+    }
+
+    function fadeIn() {
+      clearInterval(fadeInterval);
+      fadeInterval = setInterval(() => {
+        if (masterGain.gain.value < 0.25) {
+          masterGain.gain.value += 0.01;
+        } else {
+          clearInterval(fadeInterval);
+        }
+      }, 100);
+    }
+
+    function fadeOut(callback) {
+      clearInterval(fadeInterval);
+      fadeInterval = setInterval(() => {
+        if (masterGain.gain.value > 0.01) {
+          masterGain.gain.value -= 0.01;
+        } else {
+          clearInterval(fadeInterval);
+          if (callback) callback();
+        }
+      }, 100);
+    }
+
+    function updateVolume() {
+      const slider = document.getElementById('volume');
+      const display = document.getElementById('volumeDisplay');
+      display.textContent = slider.value + '%';
+      if (masterGain) {
+        masterGain.gain.value = slider.value / 100;
+      }
+    }
+
+    function updateStatus(text) {
+      document.getElementById('status').textContent = text;
+    }
+
+    // ---------- SONIDOS ----------
+
+    // Latido doble con panoramización
+    function heartbeat(when, intensity = 0.1, panValue = 0) {
+      const osc = audioContext.createOscillator();
+      const gain = audioContext.createGain();
+      const panner = audioContext.createStereoPanner();
+
+      osc.frequency.value = 50;
+      osc.type = 'sine';
+      osc.connect(gain);
+      gain.connect(panner);
+      panner.connect(reverb);
+
+      panner.pan.setValueAtTime(panValue, when);
+
+      // Primer golpe
+      gain.gain.setValueAtTime(intensity, when);
+      gain.gain.exponentialRampToValueAtTime(0.001, when + 0.15);
+
+      // Segundo golpe (ba-DUM)
+      gain.gain.setValueAtTime(intensity * 0.6, when + 0.2);
+      gain.gain.exponentialRampToValueAtTime(0.001, when + 0.35);
+
+      osc.start(when);
+      osc.stop(when + 0.5);
+    }
+
+    // Piano
+    function pianoNote(when, frequency, intensity = 0.06, duration = 4, panValue = 0) {
+      const osc = audioContext.createOscillator();
+      const gain = audioContext.createGain();
+      const panner = audioContext.createStereoPanner();
+
+      osc.frequency.value = frequency;
+      osc.type = 'triangle';
+      osc.connect(gain);
+      gain.connect(panner);
+      panner.connect(reverb);
+
+      panner.pan.setValueAtTime(panValue, when);
+
+      gain.gain.setValueAtTime(intensity, when);
+      gain.gain.exponentialRampToValueAtTime(intensity * 0.3, when + 1);
+      gain.gain.exponentialRampToValueAtTime(0.001, when + duration);
+
+      osc.start(when);
+      osc.stop(when + duration);
+    }
+
+    // Respiración realista (ruido filtrado)
+    function breathingNoise(startTime, duration) {
+      const bufferSize = audioContext.sampleRate * duration;
+      const buffer = audioContext.createBuffer(1, bufferSize, audioContext.sampleRate);
+      const data = buffer.getChannelData(0);
+
+      // ruido blanco
+      for (let i = 0; i < bufferSize; i++) {
+        data[i] = Math.random() * 2 - 1;
+      }
+
+      const noise = audioContext.createBufferSource();
+      noise.buffer = buffer;
+      noise.loop = false;
+
+      const filter = audioContext.createBiquadFilter();
+      filter.type = "lowpass";
+      filter.frequency.value = 1500;
+
+      const gain = audioContext.createGain();
+      noise.connect(filter);
+      filter.connect(gain);
+      gain.connect(reverb);
+
+      // Inhalar/exhalar
+      let time = startTime;
+      for (let i = 0; i < duration / 2; i++) {
+        const breathIntensity = 0.04 + Math.random() * 0.02;
+        gain.gain.setValueAtTime(0, time);
+        gain.gain.linearRampToValueAtTime(breathIntensity, time + 0.6);
+        gain.gain.linearRampToValueAtTime(0, time + 1.2);
+        time += 2;
+      }
+
+      noise.start(startTime);
+    }
+
+    // Drone grave continuo
+    function startDrone() {
+      const osc = audioContext.createOscillator();
+      const gain = audioContext.createGain();
+      osc.frequency.value = 45;
+      osc.type = 'sine';
+      osc.connect(gain);
+      gain.connect(reverb);
+      gain.gain.value = 0.02;
+      osc.start();
+      osc.stop(audioContext.currentTime + 120);
+    }
+
+    // ---------- SECUENCIA ----------
+
+    function startExperience() {
+      initAudio();
+      stopAll();
+      isPlaying = true;
+      fadeIn();
+
+      const now = audioContext.currentTime;
+
+      // Drone inicial
+      startDrone();
+
+      // FASE 1 (0-30s): Latidos suaves + piano
+      updateStatus("Latidos suaves y piano...");
+      let beatTime = now;
+      let beatInterval = 1.2;
+      for (let i = 0; i < 25; i++) {
+        heartbeat(beatTime, 0.08, (i % 2 === 0 ? -0.3 : 0.3));
+        beatTime += beatInterval;
+        beatInterval -= 0.02;
+      }
+      pianoNote(now + 3, 220, 0.05, 6, -0.2);
+      pianoNote(now + 8, 262, 0.05, 6, 0.2);
+      pianoNote(now + 15, 196, 0.05, 6, -0.1);
+      pianoNote(now + 22, 175, 0.05, 8, 0.1);
+
+      // FASE 2 (30-75s)
+      timeouts.push(setTimeout(() => {
+        if (!isPlaying) return;
+        updateStatus("Latidos acelerados y respiración intensa...");
+        let fastBeatTime = now + 30;
+        for (let i = 0; i < 60; i++) {
+          heartbeat(fastBeatTime, 0.12 + Math.random() * 0.03, (Math.random() - 0.5));
+          fastBeatTime += 0.7 + Math.random() * 0.2;
+        }
+        breathingNoise(now + 35, 40);
+        pianoNote(now + 40, 147, 0.07, 5, -0.3);
+        pianoNote(now + 50, 131, 0.07, 5, 0.3);
+        pianoNote(now + 60, 110, 0.07, 8, -0.2);
+      }, 30000));
+
+      // FASE 3 (75-120s)
+      timeouts.push(setTimeout(() => {
+        if (!isPlaying) return;
+        updateStatus("Resolución armónica...");
+        let calmBeatTime = now + 75;
+        let calmInterval = 0.8;
+        for (let i = 0; i < 50; i++) {
+          heartbeat(calmBeatTime, 0.1 - i * 0.001, (i % 2 === 0 ? -0.2 : 0.2));
+          calmBeatTime += calmInterval;
+          calmInterval += 0.02;
+        }
+        pianoNote(now + 85, 131, 0.08, 12, -0.3);
+        pianoNote(now + 85.2, 165, 0.06, 12, 0.3);
+        pianoNote(now + 85.4, 196, 0.05, 12, 0);
+        pianoNote(now + 95, 175, 0.07, 12, -0.2);
+        pianoNote(now + 95.2, 220, 0.05, 12, 0.2);
+        pianoNote(now + 95.4, 262, 0.04, 12, 0);
+        pianoNote(now + 105, 131, 0.09, 15, -0.3);
+        pianoNote(now + 105.3, 165, 0.07, 15, 0.3);
+        pianoNote(now + 105.6, 196, 0.06, 15, 0);
+        pianoNote(now + 105.9, 262, 0.05, 15, 0.2);
+      }, 75000));
+
+      // Final
+      timeouts.push(setTimeout(() => {
+        if (isPlaying) {
+          fadeOut(() => {
+            stopAll();
+            updateStatus("Experiencia completada ✨");
+          });
+        }
+      }, 120000));
+    }
+
+    function stopAll() {
+      isPlaying = false;
+      timeouts.forEach(t => clearTimeout(t));
+      timeouts = [];
+      updateStatus("Detenido");
+    }
+  </script>
+</body>
+</html>
