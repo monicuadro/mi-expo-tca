@@ -5,6 +5,73 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
     <title>Espejo Distorsionado: Reflexión Optimizada</title>
     <style>
+        <style>
+  .modal {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    position: fixed;
+    z-index: 1000;
+    left: 0;
+    top: 0;
+    width: 100%;
+    height: 100%;
+    background-color: rgba(0,0,0,0.75);
+  }
+
+  .modal-content {
+    background-color: #fff5f5;
+    padding: 2em;
+    border: 2px solid #d9363e;
+    border-radius: 12px;
+    max-width: 500px;
+    text-align: center;
+    font-family: sans-serif;
+    color: #333;
+    box-shadow: 0 6px 20px rgba(0,0,0,0.3);
+  }
+
+  .modal-content h2 {
+    color: #d9363e;
+    margin-bottom: 1em;
+  }
+
+  .modal-content ul {
+    text-align: left;
+    margin: 1em auto;
+    max-width: 400px;
+  }
+
+  .modal-content button {
+    margin: 0.5em;
+    padding: 0.8em 1.5em;
+    border: none;
+    border-radius: 6px;
+    cursor: pointer;
+    font-size: 1em;
+    font-weight: bold;
+    transition: background 0.2s;
+  }
+
+  .accept {
+    background-color: #d9363e;
+    color: white;
+  }
+
+  .accept:hover {
+    background-color: #b52c33;
+  }
+
+  .cancel {
+    background-color: #ccc;
+    color: #333;
+  }
+
+  .cancel:hover {
+    background-color: #999;
+  }
+</style>
+
         body {
             margin: 0;
             padding: 0;
@@ -600,7 +667,7 @@ function startSoundscape(){
   }, fases.length*faseDur*1000));
 }
 </script>
-aqui pego unas cosas
+
     <!-- 🔴 Modal de advertencia -->
 <div id="warningModal" class="modal">
   <div class="modal-content">
@@ -618,8 +685,13 @@ aqui pego unas cosas
     </div>
   </div>
 </div>
-y aqui termina
-    
+
+    <script>
+  function closeModal() {
+    document.getElementById('warningModal').style.display = 'none';
+  }
+</script>
+
 </body>
 </html>
 
