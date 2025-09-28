@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
-  <title>Espejo Distorsionado + Paisaje Sonoro</title>
+  <title>Espejo Distorsionado: Reflexión Optimizada</title>
   <style>
     body {
       margin: 0;
@@ -25,7 +25,13 @@
       display: flex;
       flex-direction: column;
     }
-    #video, #canvas {
+    #video {
+      position: absolute;
+      top: 0; left: 0;
+      width: 100%; height: 100%;
+      object-fit: cover;
+    }
+    #canvas {
       position: absolute;
       top: 0; left: 0;
       width: 100%; height: 100%;
@@ -46,33 +52,32 @@
       transition: opacity 0.3s;
       box-shadow: 0 4px 15px rgba(75, 0, 130, 0.3);
     }
+    #controls.hidden { opacity: 0; pointer-events: none; }
+    #intensity { width: 100%; margin: 3px 0; height: 22px; }
     #distorsion-btn, #reset, #presets button {
       background: linear-gradient(to right, #4B0082, #2F004F);
-      color: #fff;
-      border: none;
+      color: #fff; border: none;
       padding: 6px 8px;
       margin: 1px;
       border-radius: 8px;
       font-size: 12px;
       min-width: 60px;
-      cursor: pointer;
+      transition: transform 0.1s, box-shadow 0.2s;
     }
     #distorsion-btn {
       background: linear-gradient(to right, #7CFC00, #32CD32);
     }
     #distorsion-btn.active {
       background: linear-gradient(to right, #32CD32, #228B22);
+      transform: scale(1.05);
+      box-shadow: 0 2px 10px rgba(124, 252, 0, 0.5);
     }
-    #instructions, #warningModal {
+    #instructions {
       position: absolute;
-      top: 20px;
-      left: 20px; right: 20px;
-      background: rgba(75, 0, 130, 0.9);
-      padding: 12px;
-      border-radius: 10px;
-      z-index: 20;
-      text-align: center;
-      display: none;
+      top: 20px; left: 20px; right: 20px;
+      background: rgba(75, 0, 130, 0.7);
+      padding: 12px; border-radius: 10px;
+      z-index: 5; display: none; text-align: center;
       box-shadow: 0 4px 15px rgba(75, 0, 130, 0.3);
     }
     #loading, #error {
@@ -80,67 +85,88 @@
       top: 50%; left: 50%;
       transform: translate(-50%, -50%);
       z-index: 15;
+      font-size: 16px; text-align: center;
       background: rgba(75, 0, 130, 0.8);
-      padding: 12px;
-      border-radius: 10px;
+      padding: 12px; border-radius: 10px;
       color: #fff;
     }
     #fps {
-      position: absolute;
-      top: 10px; right: 10px;
-      font-size: 11px;
-      z-index: 10;
+      position: absolute; top: 10px; right: 10px;
+      font-size: 11px; z-index: 10;
       background: rgba(75, 0, 130, 0.6);
-      padding: 4px;
-      border-radius: 5px;
+      padding: 4px; border-radius: 5px;
     }
-    #sonido {
+    #presets {
+      display: flex; flex-wrap: wrap;
+      justify-content: space-evenly;
+      margin-top: 3px; gap: 2px;
+    }
+    /* Botón Paisaje Sonoro */
+    #soundscape-btn {
       position: absolute;
-      top: 20px;
-      right: 20px;
-      background: rgba(255,255,255,0.2);
-      border: 2px solid #fff;
-      border-radius: 50%;
-      width: 50px; height: 50px;
-      display: flex;
-      align-items: center;
-      justify-content: center;
+      bottom: 20px; left: 20px;
+      z-index: 20;
+      background: linear-gradient(to right, #4B0082, #2F004F);
+      color: #fff;
+      border: none;
+      padding: 8px 12px;
+      border-radius: 10px;
+      font-size: 13px;
       cursor: pointer;
-      z-index: 15;
-      font-size: 18px;
-      transition: background 0.3s;
+      box-shadow: 0 3px 10px rgba(0,0,0,0.4);
+      transition: transform 0.2s, background 0.3s;
     }
-    #sonido:hover {
-      background: rgba(255,255,255,0.4);
+    #soundscape-btn:hover {
+      transform: scale(1.05);
+      background: linear-gradient(to right, #5c0ca8, #3b0166);
+    }
+    /* Modal de advertencia */
+    #warning-modal {
+      position: fixed;
+      top: 0; left: 0; right: 0; bottom: 0;
+      background: rgba(0,0,0,0.9);
+      color: #fff;
+      display: flex; flex-direction: column;
+      justify-content: center; align-items: center;
+      z-index: 100;
+      padding: 20px;
+      text-align: center;
+    }
+    #warning-modal button {
+      margin-top: 20px;
+      background: linear-gradient(to right, #4B0082, #2F004F);
+      border: none; color: #fff;
+      padding: 10px 16px;
+      border-radius: 8px;
+      font-size: 14px;
+      cursor: pointer;
     }
   </style>
 </head>
 <body>
-  <div id="container">
+  <!-- Modal de Advertencia -->
+  <div id="warning-modal">
+    <h2>⚠️ Advertencia</h2>
+    <p>Esta experiencia contiene efectos visuales fuertes y distorsiones.<br>
+       No recomendado para personas con epilepsia fotosensible o alta sensibilidad visual.</p>
+    <button onclick="closeWarning()">Aceptar y continuar</button>
+  </div>
+
+  <div id="container" style="display:none;">
     <video id="video" autoplay muted playsinline></video>
     <canvas id="canvas"></canvas>
-
     <div id="instructions">
       <h2>Espejo Distorsionado</h2>
-      <p>Explora distorsiones en tu reflejo para reflexionar sobre la dismorfia corporal.</p>
+      <p>Explora distorsiones en tu reflejo para reflexionar sobre la dismorfia corporal. Usa la cámara frontal.</p>
+      <p><strong>Efecto:</strong> Ondas + bulge (efectos variados). Activa con el botón "Distorsión".</p>
       <button onclick="closeInstructions()">Iniciar Experiencia</button>
     </div>
-
-    <div id="warningModal">
-      <h3>⚠️ Advertencia</h3>
-      <p>Este paisaje sonoro incluye pulsos intensos, ruidos perturbadores y variaciones abruptas.</p>
-      <p>No recomendado para personas con epilepsia fotosensible, ansiedad, o sensibilidad auditiva.</p>
-      <button onclick="closeWarning()">Entendido</button>
-    </div>
-
     <div id="loading">Cargando cámara... Otorga permisos.</div>
-    <div id="error" style="display: none;">
+    <div id="error" style="display:none;">
       <p>Error en cámara. Verifica permisos o HTTPS.</p>
       <button onclick="initCamera()">Reintentar</button>
     </div>
-
     <div id="fps">FPS: 0</div>
-
     <div id="controls">
       <label for="intensity">Intensidad (0-100): <span id="value">0</span></label>
       <input type="range" id="intensity" min="0" max="100" value="0" step="1">
@@ -154,11 +180,14 @@
       </div>
     </div>
 
-    <div id="sonido" onclick="toggleSoundscape()">▶</div>
+    <!-- Botón Paisaje Sonoro -->
+    <button id="soundscape-btn">Iniciar Contención</button>
+    <audio id="soundscape" preload="auto">
+      <source src="paisaje_sonoro.mp3" type="audio/mpeg">
+    </audio>
   </div>
 
   <script>
-    /************* VIDEO + DISTORSIÓN *************/
     const video = document.getElementById('video');
     const canvas = document.getElementById('canvas');
     const ctx = canvas.getContext('2d');
@@ -170,16 +199,60 @@
     const controls = document.getElementById('controls');
     const fpsEl = document.getElementById('fps');
     const instructions = document.getElementById('instructions');
-    const warningModal = document.getElementById('warningModal');
+    const container = document.getElementById('container');
+    const warningModal = document.getElementById('warning-modal');
 
+    // Paisaje sonoro
+    const soundscapeBtn = document.getElementById('soundscape-btn');
+    const soundscape = document.getElementById('soundscape');
+    const fases = ["Contención","Crisis","Fragmentación","Distorsión","Resolución"];
+    const duracionFase = 20000; // 20s por fase
+    let faseIndex = 0;
+    let faseInterval;
+
+    soundscapeBtn.addEventListener('click', () => {
+      if (soundscape.paused) {
+        soundscape.play();
+        soundscapeBtn.textContent = "Fase: " + fases[faseIndex];
+        faseInterval = setInterval(() => {
+          faseIndex = (faseIndex + 1) % fases.length;
+          soundscapeBtn.textContent = "Fase: " + fases[faseIndex];
+        }, duracionFase);
+      } else {
+        soundscape.pause();
+        soundscape.currentTime = 0;
+        clearInterval(faseInterval);
+        faseIndex = 0;
+        soundscapeBtn.textContent = "Iniciar Contención";
+      }
+    });
+
+    // Advertencia inicial
+    function closeWarning() {
+      warningModal.style.display = "none";
+      container.style.display = "block";
+      initCamera();
+    }
+
+    // ---- Cámara y distorsión (idéntico a tu base) ----
+    let currentMode = 2;
     let distortionActive = false;
-    let animationId, stream, lastTime = 0, frameCount = 0;
+    let animationId;
+    let stream;
+    let lastTime = 0;
+    let frameCount = 0;
 
     async function initCamera() {
       try {
         loading.style.display = 'block';
         error.style.display = 'none';
-        const constraints = { video: { facingMode: 'user' } };
+        const constraints = {
+          video: {
+            facingMode: 'user',
+            width: { ideal: window.innerWidth < 768 ? 480 : 640 },
+            height: { ideal: window.innerHeight < 768 ? 360 : 480 }
+          }
+        };
         stream = await navigator.mediaDevices.getUserMedia(constraints);
         video.srcObject = stream;
         video.onloadedmetadata = () => {
@@ -187,13 +260,13 @@
           canvas.height = video.videoHeight;
           loading.style.display = 'none';
           instructions.style.display = 'block';
-          warningModal.style.display = 'block';
           video.play();
           render();
         };
       } catch (err) {
         loading.style.display = 'none';
         error.style.display = 'block';
+        console.error('Error cámara:', err);
       }
     }
 
@@ -203,40 +276,50 @@
         ctx.scale(-1, 1);
         ctx.drawImage(video, -canvas.width, 0, canvas.width, canvas.height);
         ctx.restore();
+
         const intensity = parseInt(intensitySlider.value);
-        if (distortionActive && intensity > 0) distortImage(intensity, currentTime*0.001);
+        if (distortionActive && intensity > 0) {
+          distortImage(intensity, currentTime * 0.001);
+        }
+
         frameCount++;
         if (currentTime - lastTime >= 1000) {
-          fpsEl.textContent = `FPS: ${Math.round(frameCount*1000/(currentTime-lastTime))}`;
-          frameCount = 0; lastTime = currentTime;
+          fpsEl.textContent = `FPS: ${Math.round(frameCount * 1000 / (currentTime - lastTime))}`;
+          frameCount = 0;
+          lastTime = currentTime;
         }
       }
       animationId = requestAnimationFrame(render);
     }
 
     function distortImage(intensity, time) {
-      let imageData = ctx.getImageData(0,0,canvas.width,canvas.height);
+      let imageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
       let sourceData = new Uint8ClampedArray(imageData.data);
       let destData = new Uint8ClampedArray(sourceData.length);
-      const w = canvas.width, h = canvas.height, cx=w/2, cy=h/2;
-      for (let y=0;y<h;y++) {
-        for (let x=0;x<w;x++) {
-          let dx=Math.sin(y*0.02+time*2)*(intensity/100)*8;
-          let dy=Math.cos(x*0.015+time*3)*(intensity/100)*6;
-          const bulgeDist=Math.sqrt((x-cx)**2+(y-cy)**2);
-          if (bulgeDist<150){
-            const bulgeFactor=(150-bulgeDist)/150*(intensity/100)*0.03;
-            dx+=(x-cx)*bulgeFactor; dy+=(y-cy)*bulgeFactor;
+      const w = canvas.width, h = canvas.height;
+      const cx = w/2, cy = h/2;
+
+      for (let y=0; y<h; y++) {
+        for (let x=0; x<w; x++) {
+          let dx = Math.sin(y*0.02 + time*2)*(intensity/100)*8;
+          let dy = Math.cos(x*0.015 + time*3)*(intensity/100)*6;
+          const bulgeDist = Math.sqrt((x-cx)**2+(y-cy)**2);
+          if (bulgeDist < 150) {
+            const bulgeFactor = (150-bulgeDist)/150*(intensity/100)*0.03;
+            dx += (x-cx)*bulgeFactor;
+            dy += (y-cy)*bulgeFactor;
           }
-          let srcX=w-(x+dx), srcY=y+dy;
-          srcX=Math.max(0,Math.min(w-1,srcX));
-          srcY=Math.max(0,Math.min(h-1,srcY));
-          const x1=Math.floor(srcX), y1=Math.floor(srcY);
-          const x2=Math.min(x1+1,w-1), y2=Math.min(y1+1,h-1);
-          const fx=srcX-x1, fy=srcY-y1;
-          const i11=(y1*w+x1)*4, i12=(y1*w+x2)*4, i21=(y2*w+x1)*4, i22=(y2*w+x2)*4;
+          let srcX = w-(x+dx), srcY = y+dy;
+          srcX = Math.max(0, Math.min(w-1, srcX));
+          srcY = Math.max(0, Math.min(h-1, srcY));
+          const x1 = Math.floor(srcX), y1 = Math.floor(srcY);
+          const x2 = Math.min(x1+1,w-1), y2 = Math.min(y1+1,h-1);
+          const fx = srcX-x1, fy=srcY-y1;
+          const i11=(y1*w+x1)*4, i12=(y1*w+x2)*4;
+          const i21=(y2*w+x1)*4, i22=(y2*w+x2)*4;
           for (let c=0;c<3;c++){
-            const p11=sourceData[i11+c], p12=sourceData[i12+c], p21=sourceData[i21+c], p22=sourceData[i22+c];
+            const p11=sourceData[i11+c], p12=sourceData[i12+c];
+            const p21=sourceData[i21+c], p22=sourceData[i22+c];
             const interp=p11*(1-fx)*(1-fy)+p12*fx*(1-fy)+p21*(1-fx)*fy+p22*fx*fy;
             destData[(y*w+x)*4+c]=Math.round(interp);
           }
@@ -247,86 +330,31 @@
       ctx.putImageData(imageData,0,0);
     }
 
-    intensitySlider.addEventListener('input', e => valueSpan.textContent=e.target.value);
-    function toggleDistorsion(){ distortionActive=!distortionActive; distorsionBtn.textContent=distortionActive?'Desactivar':'Distorsión'; distorsionBtn.classList.toggle('active'); }
-    function setIntensity(val){ intensitySlider.value=val; valueSpan.textContent=val; }
-    function resetDistortion(){ setIntensity(0); distortionActive=false; distorsionBtn.textContent='Distorsión'; distorsionBtn.classList.remove('active'); }
-    function closeInstructions(){ instructions.style.display='none'; controls.classList.remove('hidden'); }
-    function closeWarning(){ warningModal.style.display='none'; }
+    intensitySlider.addEventListener('input', e => valueSpan.textContent = e.target.value);
 
-    /************* PAISAJE SONORO *************/
-    let audioCtx, masterGain, convolver, distort, isPlaying=false, timeouts=[];
-    const fases=["Contención","Crisis","Fragmentación","Distorsión","Resolución"];
-
-    function initAudio(){
-      if(!audioCtx){
-        audioCtx=new (window.AudioContext||window.webkitAudioContext)();
-        masterGain=audioCtx.createGain(); masterGain.gain.value=0.35;
-        convolver=audioCtx.createConvolver();
-        const length=audioCtx.sampleRate*3;
-        const impulse=audioCtx.createBuffer(2,length,audioCtx.sampleRate);
-        for(let c=0;c<2;c++){const data=impulse.getChannelData(c);
-          for(let i=0;i<length;i++){data[i]=(Math.random()*2-1)*Math.pow(1-i/length,2);}
-        }
-        convolver.buffer=impulse;
-        distort=audioCtx.createWaveShaper();
-        distort.curve=makeDistortionCurve(400); distort.oversample='4x';
-        masterGain.connect(audioCtx.destination);
-        convolver.connect(distort); distort.connect(masterGain);
-      }
+    function toggleDistorsion() {
+      distortionActive = !distortionActive;
+      distorsionBtn.textContent = distortionActive ? 'Desactivar Distorsión' : 'Distorsión';
+      distorsionBtn.classList.toggle('active');
     }
-    function makeDistortionCurve(amount){
-      let k=typeof amount==='number'?amount:50,n_samples=44100,curve=new Float32Array(n_samples),deg=Math.PI/180;
-      for(let i=0;i<n_samples;i++){let x=i*2/n_samples-1; curve[i]=(3+k)*x*20*deg/(Math.PI+k*Math.abs(x));}
-      return curve;
+    function setIntensity(val) {
+      intensitySlider.value = val;
+      valueSpan.textContent = val;
     }
-    function updateButton(text){ document.getElementById("sonido").textContent=text; }
-    function stopSoundscape(){ isPlaying=false; timeouts.forEach(t=>clearTimeout(t)); timeouts=[]; updateButton("▶"); }
-    function toggleSoundscape(){ isPlaying?stopSoundscape():startSoundscape(); }
-
-    function startSoundscape(){
-      initAudio(); stopSoundscape(); isPlaying=true;
-      const now=audioCtx.currentTime;
-      function connectFX(node){ node.connect(convolver); node.connect(masterGain); }
-      function playDrone(freq,start,dur,gainVal,type){
-        let osc=audioCtx.createOscillator(),gain=audioCtx.createGain();
-        osc.type=type; osc.frequency.setValueAtTime(freq,start);
-        gain.gain.setValueAtTime(gainVal,start); gain.gain.linearRampToValueAtTime(0.001,start+dur);
-        osc.connect(gain); connectFX(gain); osc.start(start); osc.stop(start+dur);
-      }
-      function heartbeat(start,vol){
-        let osc=audioCtx.createOscillator(),gain=audioCtx.createGain();
-        osc.type="sine"; osc.frequency.setValueAtTime(60,start);
-        gain.gain.setValueAtTime(vol,start); gain.gain.exponentialRampToValueAtTime(0.001,start+0.2);
-        osc.connect(gain); connectFX(gain); osc.start(start); osc.stop(start+0.21);
-      }
-      function noiseBreath(start,dur){
-        let buffer=audioCtx.createBuffer(1,audioCtx.sampleRate*dur,audioCtx.sampleRate);
-        let data=buffer.getChannelData(0); for(let i=0;i<data.length;i++){data[i]=Math.random()*2-1;}
-        let noise=audioCtx.createBufferSource(); noise.buffer=buffer;
-        let gain=audioCtx.createGain(); gain.gain.setValueAtTime(0.2,start); gain.gain.linearRampToValueAtTime(0.001,start+dur);
-        noise.connect(gain); connectFX(gain); noise.start(start); noise.stop(start+dur);
-      }
-      function metallicPing(start){
-        let osc=audioCtx.createOscillator(),gain=audioCtx.createGain();
-        osc.type="triangle"; osc.frequency.setValueAtTime(800,start);
-        gain.gain.setValueAtTime(0.3,start); gain.gain.exponentialRampToValueAtTime(0.001,start+1.5);
-        osc.connect(gain); connectFX(gain); osc.start(start); osc.stop(start+2);
-      }
-      const duracionFase=60;
-      for(let i=0;i<fases.length;i++){
-        const faseStart=now+i*duracionFase;
-        timeouts.push(setTimeout(()=>updateButton(fases[i]),(i*duracionFase)*1000));
-        if(fases[i]==="Contención"){ playDrone(110,faseStart,duracionFase,0.12,"sine"); playDrone(220,faseStart,duracionFase,0.08,"triangle"); }
-        if(fases[i]==="Crisis"){ for(let t=0;t<duracionFase;t+=2) heartbeat(faseStart+t,0.2); noiseBreath(faseStart,duracionFase); playDrone(55,faseStart,duracionFase,0.1,"sawtooth"); }
-        if(fases[i]==="Fragmentación"){ for(let t=0;t<duracionFase;t+=5) metallicPing(faseStart+t); playDrone(330,faseStart,duracionFase,0.1,"sine"); }
-        if(fases[i]==="Distorsión"){ for(let t=0;t<duracionFase;t+=3){ heartbeat(faseStart+t,0.25); metallicPing(faseStart+t+1.5);} playDrone(440,faseStart,duracionFase,0.15,"sawtooth"); }
-        if(fases[i]==="Resolución"){ playDrone(220,faseStart,duracionFase,0.1,"sine"); playDrone(440,faseStart,duracionFase,0.08,"triangle"); }
-      }
-      timeouts.push(setTimeout(()=>stopSoundscape(),fases.length*duracionFase*1000));
+    function resetDistortion() {
+      setIntensity(0);
+      distortionActive=false;
+      distorsionBtn.textContent='Distorsión';
+      distorsionBtn.classList.remove('active');
     }
-
-    initCamera();
+    function closeInstructions() {
+      instructions.style.display='none';
+      controls.classList.remove('hidden');
+    }
+    window.addEventListener('beforeunload',()=>{
+      if(stream)stream.getTracks().forEach(track=>track.stop());
+      cancelAnimationFrame(animationId);
+    });
   </script>
 </body>
 </html>
