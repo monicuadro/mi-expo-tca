@@ -1,0 +1,565 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Audio Ambiente - Obra Inmersiva TCA</title>
+    <style>
+        body {
+            background: linear-gradient(135deg, #0a0a0a, #1a1a2e);
+            font-family: 'Courier New', monospace;
+            color: #fff;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            min-height: 100vh;
+            margin: 0;
+            padding: 20px;
+        }
+        
+        .container {
+            background: rgba(0, 0, 0, 0.8);
+            border: 1px solid #333;
+            border-radius: 10px;
+            padding: 30px;
+            max-width: 800px;
+            text-align: center;
+            box-shadow: 0 0 30px rgba(255, 255, 255, 0.1);
+        }
+        
+        h1 {
+            color: #ff6b6b;
+            margin-bottom: 30px;
+            text-shadow: 0 0 10px rgba(255, 107, 107, 0.3);
+        }
+        
+        .controls {
+            margin: 30px 0;
+            display: flex;
+            flex-wrap: wrap;
+            gap: 15px;
+            justify-content: center;
+        }
+        
+        button {
+            background: linear-gradient(45deg, #2a2a2a, #404040);
+            color: #fff;
+            border: 1px solid #555;
+            padding: 12px 24px;
+            border-radius: 5px;
+            cursor: pointer;
+            font-family: 'Courier New', monospace;
+            transition: all 0.3s ease;
+        }
+        
+        button:hover {
+            background: linear-gradient(45deg, #404040, #2a2a2a);
+            box-shadow: 0 0 15px rgba(255, 255, 255, 0.2);
+        }
+        
+        button:active {
+            transform: scale(0.98);
+        }
+        
+        .phase-indicator {
+            margin: 20px 0;
+            padding: 15px;
+            background: rgba(255, 107, 107, 0.1);
+            border-left: 4px solid #ff6b6b;
+            border-radius: 5px;
+            font-size: 18px;
+            min-height: 20px;
+        }
+        
+        .progress-bar {
+            width: 100%;
+            height: 8px;
+            background: #333;
+            border-radius: 4px;
+            overflow: hidden;
+            margin: 20px 0;
+        }
+        
+        .progress-fill {
+            height: 100%;
+            background: linear-gradient(90deg, #ff6b6b, #4ecdc4);
+            width: 0%;
+            transition: width 0.5s ease;
+        }
+        
+        .volume-control {
+            margin: 20px 0;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 10px;
+        }
+        
+        input[type="range"] {
+            width: 200px;
+        }
+        
+        .description {
+            text-align: left;
+            margin: 30px 0;
+            padding: 20px;
+            background: rgba(255, 255, 255, 0.05);
+            border-radius: 8px;
+            font-size: 14px;
+            line-height: 1.6;
+        }
+        
+        .warning {
+            background: rgba(255, 193, 7, 0.1);
+            border: 1px solid #ffc107;
+            color: #ffc107;
+            padding: 15px;
+            border-radius: 5px;
+            margin: 20px 0;
+            font-size: 12px;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>Audio Ambiente - Obra Inmersiva</h1>
+        
+        <div class="warning">
+            ⚠️ Esta experiencia sonora contiene elementos que pueden generar incomodidad. 
+            Úsala en un espacio controlado y considera el bienestar emocional del espectador.
+        </div>
+        
+        <div class="controls">
+            <button onclick="startFullExperience()">Iniciar Experiencia Completa</button>
+            <button onclick="stopAll()">Detener Todo</button>
+        </div>
+        
+        <div class="controls">
+            <button onclick="playPhase1()">Fase 1: Sonidos Internos</button>
+            <button onclick="playPhase2()">Fase 2: Distorsión Perceptiva</button>
+            <button onclick="playPhase3()">Fase 3: Clímax Psicológico</button>
+            <button onclick="playPhase4()">Fase 4: Resolución</button>
+        </div>
+        
+        <div class="volume-control">
+            <span>Volumen:</span>
+            <input type="range" id="volumeSlider" min="0" max="100" value="30" onchange="updateVolume()">
+            <span id="volumeValue">30%</span>
+        </div>
+        
+        <div class="progress-bar">
+            <div class="progress-fill" id="progressBar"></div>
+        </div>
+        
+        <div class="phase-indicator" id="phaseIndicator">
+            Selecciona una fase o inicia la experiencia completa
+        </div>
+        
+        <div class="description">
+            <h3>Estructura de la Experiencia:</h3>
+            <p><strong>Fase 1 (0-2 min):</strong> Respiración irregular, latidos del corazón, sonidos corporales sutiles</p>
+            <p><strong>Fase 2 (2-5 min):</strong> Ecos metálicos, glitches digitales, pitch shifting progresivo</p>
+            <p><strong>Fase 3 (5-7 min):</strong> Susurros invasivos, zumbidos (tinnitus), reverberaciones deformadas</p>
+            <p><strong>Fase 4 (7-9 min):</strong> Limpieza gradual hacia tonos armónicos y resolución cálida</p>
+        </div>
+    </div>
+
+    <script>
+        // Inicializar el contexto de audio
+        let audioContext;
+        let masterGain;
+        let currentPhase = 0;
+        let phaseTimeout;
+        let activeNodes = [];
+        let isPlaying = false;
+
+        function initAudio() {
+            if (!audioContext) {
+                audioContext = new (window.AudioContext || window.webkitAudioContext)();
+                masterGain = audioContext.createGain();
+                masterGain.connect(audioContext.destination);
+                masterGain.gain.value = 0.3;
+            }
+        }
+
+        function updateVolume() {
+            const slider = document.getElementById('volumeSlider');
+            const valueDisplay = document.getElementById('volumeValue');
+            const volume = slider.value / 100;
+            valueDisplay.textContent = slider.value + '%';
+            
+            if (masterGain) {
+                masterGain.gain.linearRampToValueAtTime(volume, audioContext.currentTime + 0.1);
+            }
+        }
+
+        function updatePhaseIndicator(text) {
+            document.getElementById('phaseIndicator').textContent = text;
+        }
+
+        function updateProgress(percentage) {
+            document.getElementById('progressBar').style.width = percentage + '%';
+        }
+
+        // Generador de ruido blanco
+        function createNoiseBuffer(duration, type = 'white') {
+            const sampleRate = audioContext.sampleRate;
+            const length = sampleRate * duration;
+            const buffer = audioContext.createBuffer(2, length, sampleRate);
+            
+            for (let channel = 0; channel < 2; channel++) {
+                const data = buffer.getChannelData(channel);
+                for (let i = 0; i < length; i++) {
+                    if (type === 'pink') {
+                        // Ruido rosa (más grave)
+                        data[i] = (Math.random() * 2 - 1) * Math.pow(i / length, 0.5);
+                    } else {
+                        // Ruido blanco
+                        data[i] = Math.random() * 2 - 1;
+                    }
+                }
+            }
+            return buffer;
+        }
+
+        // Oscilador de respiración
+        function createBreathingSound() {
+            const oscillator = audioContext.createOscillator();
+            const gain = audioContext.createGain();
+            const lfo = audioContext.createOscillator();
+            const lfoGain = audioContext.createGain();
+            
+            // Oscilador principal (sonido base)
+            oscillator.frequency.value = 80;
+            oscillator.type = 'sine';
+            
+            // LFO para modulación de respiración
+            lfo.frequency.value = 0.3; // Respiración lenta
+            lfo.type = 'triangle';
+            lfoGain.gain.value = 20;
+            
+            // Conexiones
+            lfo.connect(lfoGain);
+            lfoGain.connect(oscillator.frequency);
+            oscillator.connect(gain);
+            gain.connect(masterGain);
+            
+            // Envelope para respiración irregular
+            gain.gain.value = 0;
+            const now = audioContext.currentTime;
+            
+            // Patrón de respiración irregular
+            for (let i = 0; i < 120; i++) { // 2 minutos
+                const time = now + i;
+                const breathIntensity = 0.02 + Math.random() * 0.03;
+                gain.gain.setValueAtTime(breathIntensity, time);
+                gain.gain.exponentialRampToValueAtTime(0.001, time + 0.8);
+            }
+            
+            oscillator.start(now);
+            lfo.start(now);
+            oscillator.stop(now + 120);
+            lfo.stop(now + 120);
+            
+            activeNodes.push(oscillator, lfo);
+        }
+
+        // Latidos del corazón
+        function createHeartbeat() {
+            const createBeat = (time, intensity = 0.1) => {
+                const oscillator = audioContext.createOscillator();
+                const gain = audioContext.createGain();
+                
+                oscillator.frequency.value = 60;
+                oscillator.type = 'sine';
+                oscillator.connect(gain);
+                gain.connect(masterGain);
+                
+                gain.gain.value = 0;
+                gain.gain.setValueAtTime(intensity, time);
+                gain.gain.exponentialRampToValueAtTime(0.001, time + 0.1);
+                
+                oscillator.start(time);
+                oscillator.stop(time + 0.1);
+            };
+            
+            const now = audioContext.currentTime;
+            let beatTime = now;
+            
+            // Latidos irregulares durante 2 minutos
+            for (let i = 0; i < 160; i++) {
+                const interval = 0.7 + Math.random() * 0.4; // Ritmo irregular
+                const intensity = 0.05 + Math.random() * 0.05;
+                createBeat(beatTime, intensity);
+                beatTime += interval;
+                
+                if (beatTime > now + 120) break;
+            }
+        }
+
+        // Glitches digitales
+        function createGlitches() {
+            const buffer = createNoiseBuffer(0.1, 'white');
+            
+            for (let i = 0; i < 50; i++) {
+                setTimeout(() => {
+                    const source = audioContext.createBufferSource();
+                    const gain = audioContext.createGain();
+                    const filter = audioContext.createBiquadFilter();
+                    
+                    source.buffer = buffer;
+                    filter.type = 'highpass';
+                    filter.frequency.value = 2000 + Math.random() * 3000;
+                    
+                    source.connect(filter);
+                    filter.connect(gain);
+                    gain.connect(masterGain);
+                    
+                    gain.gain.value = 0.05 + Math.random() * 0.1;
+                    source.start();
+                    source.stop(audioContext.currentTime + 0.05);
+                    
+                    activeNodes.push(source);
+                }, Math.random() * 180000); // Distribuido en 3 minutos
+            }
+        }
+
+        // Eco metálico
+        function createMetallicEcho() {
+            const oscillator = audioContext.createOscillator();
+            const gain = audioContext.createGain();
+            const delay = audioContext.createDelay();
+            const feedback = audioContext.createGain();
+            const filter = audioContext.createBiquadFilter();
+            
+            oscillator.frequency.value = 200;
+            oscillator.type = 'sawtooth';
+            
+            delay.delayTime.value = 0.3;
+            feedback.gain.value = 0.4;
+            filter.type = 'bandpass';
+            filter.frequency.value = 800;
+            filter.Q.value = 10;
+            
+            oscillator.connect(gain);
+            gain.connect(filter);
+            filter.connect(delay);
+            delay.connect(feedback);
+            feedback.connect(delay);
+            delay.connect(masterGain);
+            
+            gain.gain.value = 0.03;
+            
+            // Modulación de frecuencia para efecto inquietante
+            const lfo = audioContext.createOscillator();
+            const lfoGain = audioContext.createGain();
+            lfo.frequency.value = 0.1;
+            lfo.type = 'sine';
+            lfoGain.gain.value = 50;
+            
+            lfo.connect(lfoGain);
+            lfoGain.connect(oscillator.frequency);
+            
+            const now = audioContext.currentTime;
+            oscillator.start(now);
+            lfo.start(now);
+            oscillator.stop(now + 180);
+            lfo.stop(now + 180);
+            
+            activeNodes.push(oscillator, lfo);
+        }
+
+        // Susurros (ruido filtrado)
+        function createWhispers() {
+            const buffer = createNoiseBuffer(5, 'pink');
+            const source = audioContext.createBufferSource();
+            const gain = audioContext.createGain();
+            const filter = audioContext.createBiquadFilter();
+            
+            source.buffer = buffer;
+            source.loop = true;
+            
+            filter.type = 'bandpass';
+            filter.frequency.value = 1000;
+            filter.Q.value = 20;
+            
+            source.connect(filter);
+            filter.connect(gain);
+            gain.connect(masterGain);
+            
+            gain.gain.value = 0.02;
+            
+            // Modulación para crear efecto de susurros
+            const lfo = audioContext.createOscillator();
+            const lfoGain = audioContext.createGain();
+            lfo.frequency.value = 3;
+            lfo.type = 'triangle';
+            lfoGain.gain.value = 0.015;
+            
+            lfo.connect(lfoGain);
+            lfoGain.connect(gain.gain);
+            
+            source.start();
+            lfo.start();
+            
+            setTimeout(() => {
+                source.stop();
+                lfo.stop();
+            }, 120000); // 2 minutos
+            
+            activeNodes.push(source, lfo);
+        }
+
+        // Zumbido (tinnitus)
+        function createTinnitus() {
+            const oscillator = audioContext.createOscillator();
+            const gain = audioContext.createGain();
+            
+            oscillator.frequency.value = 8000; // Frecuencia aguda
+            oscillator.type = 'sine';
+            
+            oscillator.connect(gain);
+            gain.connect(masterGain);
+            
+            gain.gain.value = 0;
+            const now = audioContext.currentTime;
+            gain.gain.linearRampToValueAtTime(0.03, now + 10);
+            gain.gain.linearRampToValueAtTime(0.08, now + 60);
+            gain.gain.linearRampToValueAtTime(0, now + 120);
+            
+            oscillator.start(now);
+            oscillator.stop(now + 120);
+            
+            activeNodes.push(oscillator);
+        }
+
+        // Resolución armónica
+        function createResolution() {
+            // Acorde cálido (Do mayor)
+            const frequencies = [261.63, 329.63, 392.00]; // C4, E4, G4
+            
+            frequencies.forEach((freq, index) => {
+                const oscillator = audioContext.createOscillator();
+                const gain = audioContext.createGain();
+                
+                oscillator.frequency.value = freq;
+                oscillator.type = 'sine';
+                
+                oscillator.connect(gain);
+                gain.connect(masterGain);
+                
+                gain.gain.value = 0;
+                const now = audioContext.currentTime;
+                gain.gain.linearRampToValueAtTime(0.02, now + 2);
+                gain.gain.linearRampToValueAtTime(0.02, now + 60);
+                gain.gain.linearRampToValueAtTime(0, now + 120);
+                
+                oscillator.start(now);
+                oscillator.stop(now + 120);
+                
+                activeNodes.push(oscillator);
+            });
+        }
+
+        // Funciones de control de fases
+        function playPhase1() {
+            initAudio();
+            stopAll();
+            updatePhaseIndicator("Fase 1: Sonidos Internos - Respiración irregular y latidos");
+            createBreathingSound();
+            createHeartbeat();
+            updateProgress(25);
+        }
+
+        function playPhase2() {
+            initAudio();
+            stopAll();
+            updatePhaseIndicator("Fase 2: Distorsión Perceptiva - Ecos metálicos y glitches");
+            createMetallicEcho();
+            createGlitches();
+            updateProgress(50);
+        }
+
+        function playPhase3() {
+            initAudio();
+            stopAll();
+            updatePhaseIndicator("Fase 3: Clímax Psicológico - Susurros y zumbidos invasivos");
+            createWhispers();
+            createTinnitus();
+            updateProgress(75);
+        }
+
+        function playPhase4() {
+            initAudio();
+            stopAll();
+            updatePhaseIndicator("Fase 4: Resolución - Limpieza hacia armonía");
+            createResolution();
+            updateProgress(100);
+        }
+
+        // Experiencia completa
+        function startFullExperience() {
+            initAudio();
+            stopAll();
+            isPlaying = true;
+            
+            // Fase 1: 0-2 minutos
+            playPhase1();
+            
+            // Fase 2: 2-5 minutos
+            setTimeout(() => {
+                if (isPlaying) {
+                    playPhase2();
+                    setTimeout(() => createBreathingSound(), 0); // Mantener respiración
+                }
+            }, 120000);
+            
+            // Fase 3: 5-7 minutos
+            setTimeout(() => {
+                if (isPlaying) {
+                    playPhase3();
+                    setTimeout(() => createMetallicEcho(), 0); // Mantener eco
+                }
+            }, 300000);
+            
+            // Fase 4: 7-9 minutos
+            setTimeout(() => {
+                if (isPlaying) {
+                    playPhase4();
+                }
+            }, 420000);
+            
+            // Final
+            setTimeout(() => {
+                if (isPlaying) {
+                    stopAll();
+                    updatePhaseIndicator("Experiencia completada");
+                    updateProgress(0);
+                    isPlaying = false;
+                }
+            }, 540000); // 9 minutos total
+        }
+
+        function stopAll() {
+            isPlaying = false;
+            clearTimeout(phaseTimeout);
+            
+            // Detener todos los nodos activos
+            activeNodes.forEach(node => {
+                try {
+                    if (node.stop) node.stop();
+                    if (node.disconnect) node.disconnect();
+                } catch (e) {}
+            });
+            activeNodes = [];
+            
+            updatePhaseIndicator("Audio detenido");
+            updateProgress(0);
+        }
+
+        // Inicializar volumen
+        updateVolume();
+    </script>
+</body>
+</html>
