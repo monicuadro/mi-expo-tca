@@ -378,243 +378,258 @@
         // Iniciar
         initCamera();
     </script>
-<!-- Panel de control del paisaje sonoro -->
-<div id="soundscape-panel">
-  <button onclick="startExperience()">▶ Iniciar</button>
-  <button onclick="stopAll()">⏹ Detener</button>
-  <input type="range" id="volume" min="0" max="100" value="25" onchange="updateVolume()">
-  <span id="volumeDisplay">25%</span>
-</div>
 
-<style>
-  #soundscape-panel {
-    position: fixed;
-    bottom: 20px;
-    left: 20px;
-    background: rgba(0,0,0,0.6);
-    color: #fff;
-    padding: 10px 15px;
-    border-radius: 10px;
-    font-size: 14px;
-    z-index: 9999;
-  }
-  #soundscape-panel button {
-    background: #333;
-    color: #fff;
-    border: none;
-    padding: 6px 12px;
-    margin: 2px;
-    border-radius: 5px;
-    cursor: pointer;
-  }
-  #soundscape-panel button:hover { background: #555; }
-  #soundscape-panel input[type="range"] { vertical-align: middle; }
-</style>
+    <body>
+  <!-- Aquí está todo tu arte interactivo -->
+  <div id="app"></div>
+
+  <!-- 🔊 Paisaje Sonoro -->
+  <h2>Paisaje Sonoro</h2>
+  <button onclick="startSoundscape()">▶ Iniciar</button>
+  <button onclick="stopSoundscape()">⏹ Detener</button>
+  <div class="status" id="status">Listo para iniciar</div>
+
+  <script>
+    // 👉 Aquí va todo el script del paisaje sonoro que te compartí
+      <!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <title>Paisaje Sonoro Inmersivo</title>
+  <style>
+    body {
+      background: #000;
+      color: #fff;
+      font-family: sans-serif;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      min-height: 100vh;
+    }
+    button {
+      background: #333;
+      color: #fff;
+      padding: 15px 30px;
+      margin: 10px;
+      border: none;
+      border-radius: 6px;
+      font-size: 16px;
+      cursor: pointer;
+    }
+    button:hover { background: #555; }
+    .status {
+      margin-top: 20px;
+      padding: 10px;
+      background: #111;
+      border-radius: 6px;
+    }
+  </style>
+</head>
+<body>
+  <h1>Paisaje Sonoro (Inmersivo)</h1>
+  <button onclick="startSoundscape()">▶ Iniciar</button>
+  <button onclick="stopSoundscape()">⏹ Detener</button>
+  <div class="status" id="status">Listo para iniciar</div>
 
 <script>
-  /* === Paisaje Sonoro Mejorado === */
-  let audioContext, masterGain, reverb;
-  let isPlaying = false;
-  let timeouts = [], fadeInterval;
+let audioCtx, masterGain, convolver, timeouts = [], isPlaying = false;
 
-  function initAudio() {
-    if (!audioContext) {
-      audioContext = new (window.AudioContext || window.webkitAudioContext)();
-      masterGain = audioContext.createGain();
-      masterGain.gain.value = 0.0;
-      masterGain.connect(audioContext.destination);
+function initAudio() {
+  if (!audioCtx) {
+    audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+    masterGain = audioCtx.createGain();
+    masterGain.gain.value = 0.35;
 
-      // Reverb simple
-      const delay = audioContext.createDelay();
-      delay.delayTime.value = 0.25;
-      const feedback = audioContext.createGain();
-      feedback.gain.value = 0.35;
-      delay.connect(feedback);
-      feedback.connect(delay);
-      delay.connect(masterGain);
-      reverb = delay;
-    }
-  }
-
-  function fadeIn() {
-    clearInterval(fadeInterval);
-    fadeInterval = setInterval(() => {
-      if (masterGain.gain.value < 0.25) {
-        masterGain.gain.value += 0.01;
-      } else clearInterval(fadeInterval);
-    }, 100);
-  }
-  function fadeOut(callback) {
-    clearInterval(fadeInterval);
-    fadeInterval = setInterval(() => {
-      if (masterGain.gain.value > 0.01) {
-        masterGain.gain.value -= 0.01;
-      } else {
-        clearInterval(fadeInterval);
-        if (callback) callback();
+    // Convolver (Reverb)
+    convolver = audioCtx.createConvolver();
+    const length = audioCtx.sampleRate * 3;
+    const impulse = audioCtx.createBuffer(2, length, audioCtx.sampleRate);
+    for (let c = 0; c < 2; c++) {
+      const data = impulse.getChannelData(c);
+      for (let i = 0; i < length; i++) {
+        data[i] = (Math.random()*2 - 1) * (1 - i/length);
       }
-    }, 100);
+    }
+    convolver.buffer = impulse;
+
+    masterGain.connect(audioCtx.destination);
+    convolver.connect(masterGain);
+  }
+}
+
+function updateStatus(text) {
+  document.getElementById('status').textContent = text;
+}
+
+function stopSoundscape(){
+  isPlaying = false;
+  timeouts.forEach(t => clearTimeout(t));
+  timeouts = [];
+  updateStatus("Detenido");
+}
+
+function startSoundscape(){
+  initAudio();
+  stopSoundscape();
+  isPlaying = true;
+
+  const now = audioCtx.currentTime;
+
+  // --- UTILIDADES ---
+  function connectWithReverb(node){
+    node.connect(convolver);
+    node.connect(masterGain);
   }
 
-  function updateVolume() {
-    const slider = document.getElementById('volume');
-    document.getElementById('volumeDisplay').textContent = slider.value + '%';
-    if (masterGain) masterGain.gain.value = slider.value / 100;
-  }
-
-  // ---- Sonidos ----
-  function heartbeat(when, intensity = 0.1, panValue = 0) {
-    const osc = audioContext.createOscillator();
-    const gain = audioContext.createGain();
-    const panner = audioContext.createStereoPanner();
-
-    osc.frequency.value = 50;
-    osc.type = 'sine';
+  function playDrone(freq, start, dur, vol=0.08, type="sine"){
+    const osc = audioCtx.createOscillator();
+    const gain = audioCtx.createGain();
+    osc.type = type;
+    osc.frequency.value = freq;
+    const panner = audioCtx.createStereoPanner();
     osc.connect(gain);
     gain.connect(panner);
-    panner.connect(reverb);
-    panner.pan.setValueAtTime(panValue, when);
+    connectWithReverb(panner);
 
-    gain.gain.setValueAtTime(intensity, when);
-    gain.gain.exponentialRampToValueAtTime(0.001, when + 0.15);
-    gain.gain.setValueAtTime(intensity * 0.6, when + 0.2);
-    gain.gain.exponentialRampToValueAtTime(0.001, when + 0.35);
+    panner.pan.setValueAtTime(-1, start);
+    panner.pan.linearRampToValueAtTime(1, start+dur);
 
-    osc.start(when);
-    osc.stop(when + 0.5);
+    gain.gain.setValueAtTime(0, start);
+    gain.gain.linearRampToValueAtTime(vol, start+2);
+    gain.gain.linearRampToValueAtTime(0.0001, start+dur);
+    osc.start(start);
+    osc.stop(start+dur);
   }
 
-  function pianoNote(when, frequency, intensity = 0.06, duration = 4, panValue = 0) {
-    const osc = audioContext.createOscillator();
-    const gain = audioContext.createGain();
-    const panner = audioContext.createStereoPanner();
-    osc.frequency.value = frequency;
-    osc.type = 'triangle';
-    osc.connect(gain);
-    gain.connect(panner);
-    panner.connect(reverb);
-    panner.pan.setValueAtTime(panValue, when);
-
-    gain.gain.setValueAtTime(intensity, when);
-    gain.gain.exponentialRampToValueAtTime(intensity * 0.3, when + 1);
-    gain.gain.exponentialRampToValueAtTime(0.001, when + duration);
-
-    osc.start(when);
-    osc.stop(when + duration);
+  function heartbeat(time, intensity=0.15){
+    const makePulse = (offset, vol) => {
+      const osc = audioCtx.createOscillator();
+      const gain = audioCtx.createGain();
+      const panner = audioCtx.createStereoPanner();
+      osc.frequency.value = 60;
+      osc.type = 'sine';
+      osc.connect(gain);
+      gain.connect(panner);
+      connectWithReverb(panner);
+      panner.pan.setValueAtTime(Math.random()*2-1, time+offset);
+      gain.gain.setValueAtTime(vol, time+offset);
+      gain.gain.exponentialRampToValueAtTime(0.001, time+offset+0.1);
+      osc.start(time+offset);
+      osc.stop(time+offset+0.12);
+    }
+    makePulse(0, intensity);
+    makePulse(0.25, intensity*0.8);
   }
 
-  function breathingNoise(startTime, duration) {
-    const bufferSize = audioContext.sampleRate * duration;
-    const buffer = audioContext.createBuffer(1, bufferSize, audioContext.sampleRate);
+  function breathing(start, dur, intensity=0.25){
+    const noise = audioCtx.createBufferSource();
+    const buffer = audioCtx.createBuffer(1, audioCtx.sampleRate*dur, audioCtx.sampleRate);
     const data = buffer.getChannelData(0);
-    for (let i = 0; i < bufferSize; i++) data[i] = Math.random() * 2 - 1;
-
-    const noise = audioContext.createBufferSource();
+    for (let i=0;i<data.length;i++) data[i] = (Math.random()*2-1)*0.5;
     noise.buffer = buffer;
 
-    const filter = audioContext.createBiquadFilter();
-    filter.type = "lowpass";
-    filter.frequency.value = 1500;
+    const gain = audioCtx.createGain();
+    const panner = audioCtx.createStereoPanner();
+    noise.connect(gain);
+    gain.connect(panner);
+    connectWithReverb(panner);
 
-    const gain = audioContext.createGain();
-    noise.connect(filter);
-    filter.connect(gain);
-    gain.connect(reverb);
-
-    let time = startTime;
-    for (let i = 0; i < duration / 2; i++) {
-      const breathIntensity = 0.04 + Math.random() * 0.02;
-      gain.gain.setValueAtTime(0, time);
-      gain.gain.linearRampToValueAtTime(breathIntensity, time + 0.6);
-      gain.gain.linearRampToValueAtTime(0, time + 1.2);
-      time += 2;
+    let t = start;
+    while (t < start+dur){
+      let panVal = (Math.random()*2-1);
+      panner.pan.setValueAtTime(panVal, t);
+      gain.gain.setValueAtTime(0, t);
+      gain.gain.linearRampToValueAtTime(intensity, t+0.4);
+      gain.gain.linearRampToValueAtTime(0, t+1.2);
+      t += 1.5;
     }
-    noise.start(startTime);
+    noise.start(start);
+    noise.stop(start+dur);
   }
 
-  function startDrone() {
-    const osc = audioContext.createOscillator();
-    const gain = audioContext.createGain();
-    osc.frequency.value = 45;
-    osc.type = 'sine';
+  function metallicPing(time){
+    const osc = audioCtx.createOscillator();
+    const gain = audioCtx.createGain();
+    const panner = audioCtx.createStereoPanner();
+    osc.type = 'square';
+    osc.frequency.value = 1000 + Math.random()*1500;
     osc.connect(gain);
-    gain.connect(reverb);
-    gain.gain.value = 0.02;
-    osc.start();
-    osc.stop(audioContext.currentTime + 120);
+    gain.connect(panner);
+    connectWithReverb(panner);
+    panner.pan.setValueAtTime(Math.random()*2-1, time);
+    gain.gain.setValueAtTime(0.15, time);
+    gain.gain.exponentialRampToValueAtTime(0.0001, time+2);
+    osc.start(time);
+    osc.stop(time+2);
   }
 
-  // ---- Secuencia ----
-  function startExperience() {
-    initAudio();
-    stopAll();
-    isPlaying = true;
-    fadeIn();
-    const now = audioContext.currentTime;
+  function pianoChord(time, freqs){
+    freqs.forEach((f,i)=>{
+      const osc = audioCtx.createOscillator();
+      const gain = audioCtx.createGain();
+      const panner = audioCtx.createStereoPanner();
+      osc.type = 'triangle';
+      osc.frequency.value = f;
+      osc.connect(gain);
+      gain.connect(panner);
+      connectWithReverb(panner);
+      panner.pan.setValueAtTime((i%2===0? -0.5:0.5), time);
+      gain.gain.setValueAtTime(0.12, time);
+      gain.gain.exponentialRampToValueAtTime(0.001, time+8);
+      osc.start(time + i*0.1);
+      osc.stop(time+8);
+    });
+  }
 
-    startDrone();
+  // --- FASE 1 ---
+  updateStatus("Fase 1: Contención...");
+  playDrone(60, now, 30, 0.08, "sine");
+  let beatT = now;
+  for (let i=0;i<12;i++){
+    heartbeat(beatT, 0.1);
+    beatT += 2.2;
+  }
 
-    // Fase 1 (0-30s)
-    let beatTime = now, beatInterval = 1.2;
-    for (let i = 0; i < 25; i++) {
-      heartbeat(beatTime, 0.08, (i % 2 === 0 ? -0.3 : 0.3));
-      beatTime += beatInterval;
-      beatInterval -= 0.02;
+  // --- FASE 2 ---
+  timeouts.push(setTimeout(()=>{
+    if (!isPlaying) return;
+    updateStatus("Fase 2: Crisis...");
+    let t = audioCtx.currentTime;
+    for (let i=0;i<40;i++){
+      heartbeat(t+i*0.6, 0.22);
     }
-    pianoNote(now + 3, 220, 0.05, 6, -0.2);
-    pianoNote(now + 8, 262, 0.05, 6, 0.2);
-    pianoNote(now + 15, 196, 0.05, 6, -0.1);
-    pianoNote(now + 22, 175, 0.05, 8, 0.1);
+    breathing(t+3, 40, 0.35);
+    for (let i=0;i<15;i++){
+      metallicPing(t+5+Math.random()*30);
+    }
+    playDrone(70, t, 40, 0.09, "sine");
+  },30000));
 
-    // Fase 2 (30-75s)
-    timeouts.push(setTimeout(() => {
-      if (!isPlaying) return;
-      let fastBeatTime = now + 30;
-      for (let i = 0; i < 60; i++) {
-        heartbeat(fastBeatTime, 0.12 + Math.random() * 0.03, (Math.random() - 0.5));
-        fastBeatTime += 0.7 + Math.random() * 0.2;
-      }
-      breathingNoise(now + 35, 40);
-      pianoNote(now + 40, 147, 0.07, 5, -0.3);
-      pianoNote(now + 50, 131, 0.07, 5, 0.3);
-      pianoNote(now + 60, 110, 0.07, 8, -0.2);
-    }, 30000));
+  // --- FASE 3 ---
+  timeouts.push(setTimeout(()=>{
+    if (!isPlaying) return;
+    updateStatus("Fase 3: Resolución...");
+    let t = audioCtx.currentTime;
+    playDrone(130, t, 40, 0.05, "triangle");
+    playDrone(261.6, t, 40, 0.03, "sine");
+    pianoChord(t+5, [261.6, 329.6, 392]); // C-E-G
+    pianoChord(t+20, [174.6,220,261.6]); // F-A-C
+    pianoChord(t+35, [130.8,196,261.6]); // C-G-C
+  },80000));
 
-    // Fase 3 (75-120s)
-    timeouts.push(setTimeout(() => {
-      if (!isPlaying) return;
-      let calmBeatTime = now + 75, calmInterval = 0.8;
-      for (let i = 0; i < 50; i++) {
-        heartbeat(calmBeatTime, 0.1 - i * 0.001, (i % 2 === 0 ? -0.2 : 0.2));
-        calmBeatTime += calmInterval;
-        calmInterval += 0.02;
-      }
-      pianoNote(now + 85, 131, 0.08, 12, -0.3);
-      pianoNote(now + 85.2, 165, 0.06, 12, 0.3);
-      pianoNote(now + 85.4, 196, 0.05, 12, 0);
-      pianoNote(now + 95, 175, 0.07, 12, -0.2);
-      pianoNote(now + 95.2, 220, 0.05, 12, 0.2);
-      pianoNote(now + 95.4, 262, 0.04, 12, 0);
-      pianoNote(now + 105, 131, 0.09, 15, -0.3);
-      pianoNote(now + 105.3, 165, 0.07, 15, 0.3);
-      pianoNote(now + 105.6, 196, 0.06, 15, 0);
-      pianoNote(now + 105.9, 262, 0.05, 15, 0.2);
-    }, 75000));
-
-    // Final
-    timeouts.push(setTimeout(() => {
-      if (isPlaying) {
-        fadeOut(() => stopAll());
-      }
-    }, 120000));
-  }
-
-  function stopAll() {
-    isPlaying = false;
-    timeouts.forEach(t => clearTimeout(t));
-    timeouts = [];
-  }
+  // --- FINAL ---
+  timeouts.push(setTimeout(()=>{
+    stopSoundscape();
+    updateStatus("Experiencia completada ✨");
+  },120000));
+}
 </script>
+</body>
+</html>
+
+  </script>
+</body>
 
 </body>
 </html>
