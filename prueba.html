@@ -1,99 +1,121 @@
 <!DOCTYPE html>
 <html lang="es">
 <head>
-<meta charset="UTF-8">
-<title>Espejo Distorsionado</title>
-<style>
-  /* 🔴 Modal styles */
-  .modal {
-    display: flex;
-    justify-content: center;
-    align-items: center;
-    position: fixed;
-    z-index: 2000;
-    left: 0;
-    top: 0;
-    width: 100%;
-    height: 100%;
-    background-color: rgba(0,0,0,0.75);
-  }
-  .modal-content {
-    background-color: #fff5f5;
-    padding: 2em;
-    border: 2px solid #d9363e;
-    border-radius: 12px;
-    max-width: 500px;
-    text-align: center;
-    font-family: sans-serif;
-    color: #333;
-    box-shadow: 0 6px 20px rgba(0,0,0,0.3);
-  }
-  .modal-content h2 {
-    color: #d9363e;
-    margin-bottom: 1em;
-  }
-  .modal-content ul {
-    text-align: left;
-    margin: 1em auto;
-    max-width: 400px;
-  }
-  .modal-content button {
-    margin: 0.5em;
-    padding: 0.8em 1.5em;
-    border: none;
-    border-radius: 6px;
-    cursor: pointer;
-    font-size: 1em;
-    font-weight: bold;
-    transition: background 0.2s;
-  }
-  .accept {
-    background-color: #d9363e;
-    color: white;
-  }
-  .accept:hover {
-    background-color: #b52c33;
-  }
-  .cancel {
-    background-color: #ccc;
-    color: #333;
-  }
-  .cancel:hover {
-    background-color: #999;
-  }
+  <meta charset="UTF-8">
+  <title>Dismorfia – Obra Interactiva</title>
+  <style>
+    body, html {
+      margin: 0;
+      padding: 0;
+      overflow: hidden;
+      background: black;
+      color: white;
+      font-family: sans-serif;
+    }
 
-  /* 🎵 Botón de sonido */
-  #sonido {
-    position: fixed;
-    top: 50%;
-    left: 5px;
-    transform: translateY(-50%);
-    background: rgba(0,0,0,0.6);
-    color: #fff;
-    padding: 6px;
-    border-radius: 50%;
-    font-family: sans-serif;
-    font-size: 12px;
-    width: 50px;
-    height: 50px;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    cursor: pointer;
-    z-index: 1000;
-    text-align: center;
-  }
-  #sonido:hover {
-    background: rgba(255,255,255,0.1);
-  }
-</style>
+    video, canvas {
+      position: absolute;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      object-fit: cover;
+    }
+
+    /* 🔴 Estilos del modal */
+    .modal {
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      position: fixed;
+      z-index: 2000;
+      left: 0;
+      top: 0;
+      width: 100%;
+      height: 100%;
+      background-color: rgba(0,0,0,0.85);
+    }
+
+    .modal-content {
+      background-color: #fff5f5;
+      padding: 2em;
+      border: 2px solid #d9363e;
+      border-radius: 12px;
+      max-width: 500px;
+      text-align: center;
+      color: #333;
+      box-shadow: 0 6px 20px rgba(0,0,0,0.3);
+    }
+
+    .modal-content h2 {
+      color: #d9363e;
+      margin-bottom: 1em;
+    }
+
+    .modal-content ul {
+      text-align: left;
+      margin: 1em auto;
+      max-width: 400px;
+    }
+
+    .modal-content button {
+      margin: 0.5em;
+      padding: 0.8em 1.5em;
+      border: none;
+      border-radius: 6px;
+      cursor: pointer;
+      font-size: 1em;
+      font-weight: bold;
+      transition: background 0.2s;
+    }
+
+    .accept {
+      background-color: #d9363e;
+      color: white;
+    }
+    .accept:hover {
+      background-color: #b52c33;
+    }
+    .cancel {
+      background-color: #ccc;
+      color: #333;
+    }
+    .cancel:hover {
+      background-color: #999;
+    }
+
+    /* 🎵 Botón de paisaje sonoro */
+    #sonido {
+      position: fixed;
+      top: 50%;
+      left: 5px;
+      transform: translateY(-50%);
+      background: rgba(0,0,0,0.6);
+      color: #fff;
+      padding: 6px;
+      border-radius: 50%;
+      font-family: sans-serif;
+      font-size: 12px;
+      width: 50px;
+      height: 50px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      cursor: pointer;
+      z-index: 1500;
+      text-align: center;
+    }
+    #sonido:hover {
+      background: rgba(255,255,255,0.1);
+    }
+  </style>
 </head>
 <body>
   <!-- 🔴 Modal de advertencia -->
   <div id="warningModal" class="modal">
     <div class="modal-content">
       <h2>⚠️ Aviso de advertencia</h2>
-      <p>Esta obra utiliza cámara y sonido en tiempo real.  
+      <p>Esta obra utiliza cámara y sonido en tiempo real.<br>
       Las distorsiones visuales y auditivas pueden resultar perturbadoras.</p>
       <ul>
         <li>No recomendada para personas con <strong>epilepsia fotosensible</strong> o <strong>ansiedad severa</strong>.</li>
@@ -107,197 +129,244 @@
     </div>
   </div>
 
-  <!-- 🎵 Botón paisaje sonoro -->
+  <!-- 🔵 Obra visual -->
+  <video id="video" autoplay playsinline muted></video>
+  <canvas id="canvas"></canvas>
+
+  <!-- 🎵 Botón de paisaje sonoro -->
   <div id="sonido" onclick="toggleSoundscape()">▶</div>
 
-  <!-- 🔵 Aquí iría tu obra de distorsión con cámara -->
+  <!-- 🔴 Script modal -->
+  <script>
+    function closeModal() {
+      document.getElementById('warningModal').style.display = 'none';
+    }
+  </script>
 
-<script>
-/* 🔴 Script modal */
-function closeModal() {
-  document.getElementById('warningModal').style.display = 'none';
-}
+  <!-- 🎥 Script de cámara y distorsión -->
+  <script>
+    const video = document.getElementById('video');
+    const canvas = document.getElementById('canvas');
+    const ctx = canvas.getContext('2d');
 
-/* 🎵 Script paisaje sonoro */
-let audioCtx, masterGain, convolver, distort, isPlaying = false, timeouts = [];
-const fases = ["Contención", "Crisis", "Fragmentación", "Distorsión", "Resolución"];
-let faseIndex = 0;
+    navigator.mediaDevices.getUserMedia({ video: true, audio: false })
+      .then(stream => {
+        video.srcObject = stream;
+        video.play();
+        draw();
+      });
 
-function initAudio(){
-  if (!audioCtx){
-    audioCtx = new (window.AudioContext || window.webkitAudioContext)();
-    masterGain = audioCtx.createGain();
-    masterGain.gain.value = 0.35;
+    function draw() {
+      canvas.width = video.videoWidth;
+      canvas.height = video.videoHeight;
+      ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
 
-    convolver = audioCtx.createConvolver();
-    const length = audioCtx.sampleRate * 3;
-    const impulse = audioCtx.createBuffer(2, length, audioCtx.sampleRate);
-    for (let c=0;c<2;c++){
-      const data = impulse.getChannelData(c);
-      for (let i=0;i<length;i++){
-        data[i] = (Math.random()*2-1) * Math.pow(1-i/length,2);
+      // efecto de ondas
+      const imageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
+      const data = imageData.data;
+      const time = Date.now() * 0.002;
+
+      for (let y = 0; y < canvas.height; y++) {
+        for (let x = 0; x < canvas.width; x++) {
+          let i = (y * canvas.width + x) * 4;
+          let dx = 10 * Math.sin(y / 20 + time);
+          let dy = 10 * Math.cos(x / 25 + time);
+          let nx = Math.min(canvas.width - 1, Math.max(0, x + dx));
+          let ny = Math.min(canvas.height - 1, Math.max(0, y + dy));
+          let ni = (Math.floor(ny) * canvas.width + Math.floor(nx)) * 4;
+          data[i] = data[ni];
+          data[i + 1] = data[ni + 1];
+          data[i + 2] = data[ni + 2];
+        }
+      }
+
+      ctx.putImageData(imageData, 0, 0);
+      requestAnimationFrame(draw);
+    }
+  </script>
+
+  <!-- 🎵 Script paisaje sonoro -->
+  <script>
+    let audioCtx, masterGain, convolver, distort, isPlaying = false, timeouts = [];
+    const fases = ["Contención", "Crisis", "Fragmentación", "Distorsión", "Resolución"];
+    let faseIndex = 0;
+
+    function initAudio(){
+      if (!audioCtx){
+        audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+        masterGain = audioCtx.createGain();
+        masterGain.gain.value = 0.35;
+
+        convolver = audioCtx.createConvolver();
+        const length = audioCtx.sampleRate * 3;
+        const impulse = audioCtx.createBuffer(2, length, audioCtx.sampleRate);
+        for (let c=0;c<2;c++){
+          const data = impulse.getChannelData(c);
+          for (let i=0;i<length;i++){
+            data[i] = (Math.random()*2-1) * Math.pow(1-i/length,2);
+          }
+        }
+        convolver.buffer = impulse;
+
+        distort = audioCtx.createWaveShaper();
+        distort.curve = makeDistortionCurve(400);
+        distort.oversample = '4x';
+
+        masterGain.connect(audioCtx.destination);
+        convolver.connect(distort);
+        distort.connect(masterGain);
       }
     }
-    convolver.buffer = impulse;
 
-    distort = audioCtx.createWaveShaper();
-    distort.curve = makeDistortionCurve(400);
-    distort.oversample = '4x';
-
-    masterGain.connect(audioCtx.destination);
-    convolver.connect(distort);
-    distort.connect(masterGain);
-  }
-}
-
-function makeDistortionCurve(amount){
-  let k = typeof amount === 'number' ? amount : 50,
-      n_samples = 44100,
-      curve = new Float32Array(n_samples),
-      deg = Math.PI / 180;
-  for (let i = 0; i < n_samples; ++i) {
-    let x = i * 2 / n_samples - 1;
-    curve[i] = (3 + k) * x * 20 * deg / (Math.PI + k * Math.abs(x));
-  }
-  return curve;
-}
-
-function updateButton(text){
-  document.getElementById("sonido").textContent = text;
-}
-
-function stopSoundscape(){
-  isPlaying = false;
-  timeouts.forEach(t=>clearTimeout(t));
-  timeouts=[];
-  updateButton("▶");
-}
-
-function toggleSoundscape(){
-  if (isPlaying){
-    stopSoundscape();
-  } else {
-    startSoundscape();
-  }
-}
-
-function startSoundscape(){
-  initAudio();
-  stopSoundscape();
-  isPlaying = true;
-  faseIndex = 0;
-
-  function connectFX(node){
-    node.connect(convolver);
-    node.connect(masterGain);
-  }
-
-  function playDrone(freq, start, dur, vol=0.08, type="sine"){
-    const osc = audioCtx.createOscillator();
-    const gain = audioCtx.createGain();
-    const panner = audioCtx.createStereoPanner();
-    osc.type = type;
-    osc.frequency.value = freq;
-    osc.connect(gain);
-    gain.connect(panner);
-    connectFX(panner);
-    panner.pan.setValueAtTime(-1, start);
-    panner.pan.linearRampToValueAtTime(1, start+dur);
-    gain.gain.setValueAtTime(0, start);
-    gain.gain.linearRampToValueAtTime(vol, start+2);
-    gain.gain.linearRampToValueAtTime(0.0001, start+dur);
-    osc.start(start);
-    osc.stop(start+dur);
-  }
-
-  function heartbeat(time, intensity=0.15){
-    const osc = audioCtx.createOscillator();
-    const gain = audioCtx.createGain();
-    const panner = audioCtx.createStereoPanner();
-    osc.frequency.value = 60;
-    osc.type = 'sine';
-    osc.connect(gain);
-    gain.connect(panner);
-    connectFX(panner);
-    panner.pan.setValueAtTime(Math.random()*2-1, time);
-    gain.gain.setValueAtTime(intensity, time);
-    gain.gain.exponentialRampToValueAtTime(0.001, time+0.1);
-    osc.start(time);
-    osc.stop(time+0.12);
-  }
-
-  function noiseBreath(start, dur){
-    const noise = audioCtx.createBufferSource();
-    const buffer = audioCtx.createBuffer(1, audioCtx.sampleRate*dur, audioCtx.sampleRate);
-    const data = buffer.getChannelData(0);
-    for (let i=0;i<data.length;i++) data[i] = (Math.random()*2-1)*0.5;
-    noise.buffer = buffer;
-    const gain = audioCtx.createGain();
-    const panner = audioCtx.createStereoPanner();
-    noise.connect(gain);
-    gain.connect(panner);
-    connectFX(panner);
-    let t=start;
-    while (t<start+dur){
-      let panVal = (Math.random()*2-1);
-      panner.pan.setValueAtTime(panVal, t);
-      gain.gain.setValueAtTime(0, t);
-      gain.gain.linearRampToValueAtTime(0.25, t+0.5);
-      gain.gain.linearRampToValueAtTime(0, t+1.5);
-      t+=2;
-    }
-    noise.start(start);
-    noise.stop(start+dur);
-  }
-
-  function metallicPing(time){
-    const osc = audioCtx.createOscillator();
-    const gain = audioCtx.createGain();
-    const panner = audioCtx.createStereoPanner();
-    osc.type = 'square';
-    osc.frequency.value = 1000 + Math.random()*2000;
-    osc.connect(gain);
-    gain.connect(panner);
-    connectFX(panner);
-    panner.pan.setValueAtTime(Math.random()*2-1, time);
-    gain.gain.setValueAtTime(0.15, time);
-    gain.gain.exponentialRampToValueAtTime(0.0001, time+1.5);
-    osc.start(time);
-    osc.stop(time+1.5);
-  }
-
-  const faseDur = 60;
-  fases.forEach((fase, i)=>{
-    timeouts.push(setTimeout(()=>{
-      if (!isPlaying) return;
-      updateButton(fase);
-      const t = audioCtx.currentTime;
-      if (fase==="Contención"){
-        playDrone(60, t, faseDur, 0.08, "sine");
-        for (let j=0;j<20;j++){heartbeat(t+j*3,0.08);}        
-      } else if (fase==="Crisis"){
-        playDrone(70, t, faseDur, 0.1, "sine");
-        for (let j=0;j<50;j++){heartbeat(t+j*1.2,0.2);}        
-        noiseBreath(t+2,faseDur-2);
-      } else if (fase==="Fragmentación"){
-        for (let j=0;j<30;j++){ metallicPing(t+Math.random()*faseDur); }
-        noiseBreath(t, faseDur);
-      } else if (fase==="Distorsión"){
-        playDrone(100, t, faseDur, 0.09, "triangle");
-        for (let j=0;j<40;j++){heartbeat(t+j*1.5,0.25);}        
-        for (let j=0;j<20;j++){ metallicPing(t+Math.random()*faseDur); }
-      } else if (fase==="Resolución"){
-        playDrone(130, t, faseDur, 0.05, "triangle");
-        playDrone(261.6, t, faseDur, 0.03, "sine");
+    function makeDistortionCurve(amount){
+      let k = typeof amount === 'number' ? amount : 50,
+          n_samples = 44100,
+          curve = new Float32Array(n_samples),
+          deg = Math.PI / 180;
+      for (let i = 0; i < n_samples; ++i) {
+        let x = i * 2 / n_samples - 1;
+        curve[i] = (3 + k) * x * 20 * deg / (Math.PI + k * Math.abs(x));
       }
-    }, i*faseDur*1000));
-  });
+      return curve;
+    }
 
-  timeouts.push(setTimeout(()=>{
-    stopSoundscape();
-    updateButton("✦");
-  }, fases.length*faseDur*1000));
-}
-</script>
+    function updateButton(text){
+      document.getElementById("sonido").textContent = text;
+    }
+
+    function stopSoundscape(){
+      isPlaying = false;
+      timeouts.forEach(t=>clearTimeout(t));
+      timeouts=[];
+      updateButton("▶");
+    }
+
+    function toggleSoundscape(){
+      if (isPlaying){
+        stopSoundscape();
+      } else {
+        startSoundscape();
+      }
+    }
+
+    function startSoundscape(){
+      initAudio();
+      stopSoundscape();
+      isPlaying = true;
+      faseIndex = 0;
+      const now = audioCtx.currentTime;
+
+      function connectFX(node){
+        node.connect(convolver);
+        node.connect(masterGain);
+      }
+
+      function playDrone(freq, start, dur, vol=0.08, type="sine"){
+        const osc = audioCtx.createOscillator();
+        const gain = audioCtx.createGain();
+        const panner = audioCtx.createStereoPanner();
+        osc.type = type;
+        osc.frequency.value = freq;
+        osc.connect(gain);
+        gain.connect(panner);
+        connectFX(panner);
+        panner.pan.setValueAtTime(-1, start);
+        panner.pan.linearRampToValueAtTime(1, start+dur);
+        gain.gain.setValueAtTime(0, start);
+        gain.gain.linearRampToValueAtTime(vol, start+2);
+        gain.gain.linearRampToValueAtTime(0.0001, start+dur);
+        osc.start(start);
+        osc.stop(start+dur);
+      }
+
+      function heartbeat(time, intensity=0.15){
+        const osc = audioCtx.createOscillator();
+        const gain = audioCtx.createGain();
+        const panner = audioCtx.createStereoPanner();
+        osc.frequency.value = 60;
+        osc.type = 'sine';
+        osc.connect(gain);
+        gain.connect(panner);
+        connectFX(panner);
+        panner.pan.setValueAtTime(Math.random()*2-1, time);
+        gain.gain.setValueAtTime(intensity, time);
+        gain.gain.exponentialRampToValueAtTime(0.001, time+0.1);
+        osc.start(time);
+        osc.stop(time+0.12);
+      }
+
+      function noiseBreath(start, dur){
+        const noise = audioCtx.createBufferSource();
+        const buffer = audioCtx.createBuffer(1, audioCtx.sampleRate*dur, audioCtx.sampleRate);
+        const data = buffer.getChannelData(0);
+        for (let i=0;i<data.length;i++) data[i] = (Math.random()*2-1)*0.5;
+        noise.buffer = buffer;
+        const gain = audioCtx.createGain();
+        const panner = audioCtx.createStereoPanner();
+        noise.connect(gain);
+        gain.connect(panner);
+        connectFX(panner);
+        let t=start;
+        while (t<start+dur){
+          let panVal = (Math.random()*2-1);
+          panner.pan.setValueAtTime(panVal, t);
+          gain.gain.setValueAtTime(0, t);
+          gain.gain.linearRampToValueAtTime(0.25, t+0.5);
+          gain.gain.linearRampToValueAtTime(0, t+1.5);
+          t+=2;
+        }
+        noise.start(start);
+        noise.stop(start+dur);
+      }
+
+      function metallicPing(time){
+        const osc = audioCtx.createOscillator();
+        const gain = audioCtx.createGain();
+        const panner = audioCtx.createStereoPanner();
+        osc.type = 'square';
+        osc.frequency.value = 1000 + Math.random()*2000;
+        osc.connect(gain);
+        gain.connect(panner);
+        connectFX(panner);
+        panner.pan.setValueAtTime(Math.random()*2-1, time);
+        gain.gain.setValueAtTime(0.15, time);
+        gain.gain.exponentialRampToValueAtTime(0.0001, time+1.5);
+        osc.start(time);
+        osc.stop(time+1.5);
+      }
+
+      const faseDur = 60;
+      fases.forEach((fase, i)=>{
+        timeouts.push(setTimeout(()=>{
+          if (!isPlaying) return;
+          updateButton(fase);
+          const t = audioCtx.currentTime;
+          if (fase==="Contención"){
+            playDrone(60, t, faseDur, 0.08, "sine");
+            for (let j=0;j<20;j++){heartbeat(t+j*3,0.08);}        
+          } else if (fase==="Crisis"){
+            playDrone(70, t, faseDur, 0.1, "sine");
+            for (let j=0;j<50;j++){heartbeat(t+j*1.2,0.2);}        
+            noiseBreath(t+2,faseDur-2);
+          } else if (fase==="Fragmentación"){
+            for (let j=0;j<30;j++){ metallicPing(t+Math.random()*faseDur); }
+            noiseBreath(t, faseDur);
+          } else if (fase==="Distorsión"){
+            playDrone(100, t, faseDur, 0.09, "triangle");
+            for (let j=0;j<40;j++){heartbeat(t+j*1.5,0.25);}        
+            for (let j=0;j<20;j++){ metallicPing(t+Math.random()*faseDur); }
+          } else if (fase==="Resolución"){
+            playDrone(130, t, faseDur, 0.05, "triangle");
+            playDrone(261.6, t, faseDur, 0.03, "sine");
+          }
+        }, i*faseDur*1000));
+      });
+
+      timeouts.push(setTimeout(()=>{
+        stopSoundscape();
+        updateButton("✦");
+      }, fases.length*faseDur*1000));
+    }
+  </script>
 </body>
 </html>
