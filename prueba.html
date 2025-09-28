@@ -379,7 +379,7 @@
         initCamera();
     </script>
 
-    <!-- 🔊 Paisaje Sonoro Inmersivo -->
+<!-- 🔊 Paisaje Sonoro Inmersivo -->
 <div id="sonido">
   <div class="fase" id="status">Listo</div>
   <button onclick="startSoundscape()">▶</button>
@@ -430,7 +430,7 @@
 let audioCtx, masterGain, convolver, timeouts = [], isPlaying = false;
 
 function initAudio() {
-  if (!audioCtx) {
+  if (!audioCtx || audioCtx.state === "closed") {
     audioCtx = new (window.AudioContext || window.webkitAudioContext)();
     masterGain = audioCtx.createGain();
     masterGain.gain.value = 0.35;
@@ -460,14 +460,21 @@ function stopSoundscape(){
   isPlaying = false;
   timeouts.forEach(t => clearTimeout(t));
   timeouts = [];
-  if (audioCtx) audioCtx.close().then(()=> audioCtx=null);
+  if (audioCtx && audioCtx.state !== "closed") {
+    masterGain.gain.cancelScheduledValues(audioCtx.currentTime);
+    masterGain.gain.linearRampToValueAtTime(0.0001, audioCtx.currentTime + 1);
+  }
   updateStatus("Detenido");
 }
 
 function startSoundscape(){
   initAudio();
+
+  if (audioCtx.state === "suspended") {
+    audioCtx.resume();
+  }
+
   stopSoundscape();
-  initAudio();
   isPlaying = true;
 
   const now = audioCtx.currentTime;
@@ -637,6 +644,8 @@ function startSoundscape(){
     updateStatus("Fin ✨");
   },150000));
 }
+</script>
+
 </script>
 
 </body>
