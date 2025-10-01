@@ -1,0 +1,1276 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Soundscape: Centro Comercial - Sonidos Distintivos</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+        }
+
+        body {
+            background: linear-gradient(135deg, #0c0c0c 0%, #1a1a2e 50%, #16213e 100%);
+            color: #e0e0e0;
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            padding: 20px;
+        }
+
+        .container {
+            width: 100%;
+            max-width: 1200px;
+            background: rgba(15, 23, 42, 0.9);
+            border-radius: 20px;
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.7);
+            overflow: hidden;
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            margin-top: 20px;
+        }
+
+        header {
+            background: linear-gradient(90deg, #1e3a8a 0%, #3b0764 100%);
+            padding: 25px 30px;
+            text-align: center;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+        }
+
+        h1 {
+            font-size: 32px;
+            margin-bottom: 8px;
+            font-weight: 700;
+            letter-spacing: 0.5px;
+            background: linear-gradient(90deg, #60a5fa, #a78bfa, #f472b6);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+        }
+
+        .subtitle {
+            font-size: 16px;
+            opacity: 0.85;
+            font-weight: 300;
+        }
+
+        .content {
+            padding: 30px;
+        }
+
+        .description {
+            margin-bottom: 25px;
+            line-height: 1.6;
+            font-size: 16px;
+            text-align: center;
+            background: rgba(30, 41, 59, 0.5);
+            padding: 20px;
+            border-radius: 12px;
+            border-left: 4px solid #3b82f6;
+        }
+
+        .soundscape-container {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 20px;
+            margin-bottom: 25px;
+        }
+
+        @media (max-width: 768px) {
+            .soundscape-container {
+                grid-template-columns: 1fr;
+            }
+        }
+
+        .control-panel {
+            background: rgba(30, 41, 59, 0.5);
+            padding: 20px;
+            border-radius: 12px;
+        }
+
+        .visualization-panel {
+            background: rgba(30, 41, 59, 0.5);
+            padding: 20px;
+            border-radius: 12px;
+            display: flex;
+            flex-direction: column;
+        }
+
+        .main-controls {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 15px;
+            align-items: center;
+            justify-content: center;
+            margin-bottom: 20px;
+            padding-bottom: 20px;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+        }
+
+        button {
+            padding: 12px 24px;
+            border-radius: 10px;
+            border: none;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            font-size: 16px;
+        }
+
+        #play {
+            background: linear-gradient(135deg, #10b981 0%, #059669 100%);
+            color: white;
+        }
+
+        #play:hover {
+            background: linear-gradient(135deg, #34d399 0%, #10b981 100%);
+            transform: translateY(-2px);
+            box-shadow: 0 5px 15px rgba(16, 185, 129, 0.4);
+        }
+
+        #stop {
+            background: linear-gradient(135deg, #ef4444 0%, #dc2626 100%);
+            color: white;
+        }
+
+        #stop:hover {
+            background: linear-gradient(135deg, #f87171 0%, #ef4444 100%);
+            transform: translateY(-2px);
+            box-shadow: 0 5px 15px rgba(239, 68, 68, 0.4);
+        }
+
+        button:disabled {
+            opacity: 0.6;
+            cursor: not-allowed;
+            transform: none !important;
+            box-shadow: none !important;
+        }
+
+        .volume-control {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            background: rgba(15, 23, 42, 0.7);
+            padding: 10px 15px;
+            border-radius: 10px;
+        }
+
+        .volume-control label {
+            font-weight: 500;
+            white-space: nowrap;
+        }
+
+        input[type="range"] {
+            width: 180px;
+            height: 6px;
+            border-radius: 5px;
+            background: rgba(255, 255, 255, 0.1);
+            outline: none;
+            -webkit-appearance: none;
+        }
+
+        input[type="range"]::-webkit-slider-thumb {
+            -webkit-appearance: none;
+            width: 18px;
+            height: 18px;
+            border-radius: 50%;
+            background: #3b82f6;
+            cursor: pointer;
+        }
+
+        .status {
+            font-weight: 600;
+            padding: 8px 16px;
+            border-radius: 20px;
+            background: rgba(59, 130, 246, 0.2);
+            border: 1px solid rgba(59, 130, 246, 0.3);
+        }
+
+        .layer-controls {
+            display: flex;
+            flex-direction: column;
+            gap: 15px;
+        }
+
+        .layer-control {
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+            background: rgba(15, 23, 42, 0.7);
+            padding: 15px;
+            border-radius: 10px;
+            transition: all 0.3s ease;
+        }
+
+        .layer-control:hover {
+            background: rgba(15, 23, 42, 0.9);
+            transform: translateY(-2px);
+        }
+
+        .layer-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .layer-name {
+            font-weight: 600;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .layer-value {
+            font-size: 14px;
+            background: rgba(255, 255, 255, 0.1);
+            padding: 2px 8px;
+            border-radius: 10px;
+        }
+
+        .layer-slider {
+            width: 100%;
+        }
+
+        .visualizer {
+            height: 200px;
+            background: rgba(15, 23, 42, 0.7);
+            border-radius: 12px;
+            margin-bottom: 20px;
+            overflow: hidden;
+            position: relative;
+            border: 1px solid rgba(255, 255, 255, 0.1);
+        }
+
+        .visualizer::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: linear-gradient(to bottom, transparent 0%, rgba(59, 130, 246, 0.1) 100%);
+            pointer-events: none;
+        }
+
+        canvas {
+            width: 100%;
+            height: 100%;
+            display: block;
+        }
+
+        .sound-legend {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 10px;
+            margin-bottom: 20px;
+        }
+
+        .legend-item {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            font-size: 14px;
+            padding: 8px;
+            border-radius: 8px;
+            background: rgba(255, 255, 255, 0.05);
+        }
+
+        .legend-color {
+            width: 16px;
+            height: 16px;
+            border-radius: 4px;
+        }
+
+        .emotional-intensity {
+            padding: 15px;
+            background: rgba(30, 41, 59, 0.5);
+            border-radius: 12px;
+        }
+
+        .intensity-bar {
+            height: 10px;
+            background: rgba(255, 255, 255, 0.1);
+            border-radius: 5px;
+            margin-top: 10px;
+            overflow: hidden;
+        }
+
+        .intensity-level {
+            height: 100%;
+            background: linear-gradient(90deg, #10b981, #f59e0b, #ef4444);
+            border-radius: 5px;
+            width: 30%;
+            transition: width 0.5s ease;
+        }
+
+        .info-panel {
+            background: rgba(30, 41, 59, 0.5);
+            padding: 20px;
+            border-radius: 12px;
+            font-size: 14px;
+            line-height: 1.6;
+        }
+
+        .info-panel h3 {
+            margin-bottom: 10px;
+            color: #60a5fa;
+            font-size: 18px;
+        }
+
+        .info-panel ul {
+            padding-left: 20px;
+            margin-bottom: 15px;
+        }
+
+        .info-panel li {
+            margin-bottom: 8px;
+        }
+
+        .emotional-aspect {
+            color: #f87171;
+            font-weight: 500;
+        }
+
+        footer {
+            text-align: center;
+            padding: 20px;
+            font-size: 14px;
+            opacity: 0.7;
+            border-top: 1px solid rgba(255, 255, 255, 0.1);
+        }
+
+        .test-buttons {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 10px;
+            margin-top: 15px;
+            justify-content: center;
+        }
+
+        .test-button {
+            padding: 8px 12px;
+            font-size: 12px;
+            background: rgba(59, 130, 246, 0.3);
+            border: 1px solid rgba(59, 130, 246, 0.5);
+        }
+
+        .test-button:hover {
+            background: rgba(59, 130, 246, 0.5);
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <header>
+            <h1>Soundscape: Centro Comercial</h1>
+            <div class="subtitle">Sonidos claramente distinguibles - Experiencia de probador</div>
+        </header>
+        
+        <div class="content">
+            <div class="description">
+                <p>Un soundscape con sonidos claramente diferenciados. Cada elemento tiene características únicas para que puedas identificarlos fácilmente. Usa los botones de prueba para escuchar cada sonido individualmente.</p>
+            </div>
+            
+            <div class="soundscape-container">
+                <div class="control-panel">
+                    <div class="main-controls">
+                        <button id="play">
+                            <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                                <polygon points="5 3 19 12 5 21 5 3"></polygon>
+                            </svg>
+                            Play
+                        </button>
+                        <button id="stop" disabled>
+                            <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                                <rect x="6" y="6" width="12" height="12"></rect>
+                            </svg>
+                            Stop
+                        </button>
+                        
+                        <div class="volume-control">
+                            <label for="master">Volumen Principal</label>
+                            <input id="master" type="range" min="0" max="1" step="0.01" value="0.5">
+                        </div>
+                        
+                        <div class="status" id="status">Detenido</div>
+                    </div>
+                    
+                    <div class="layer-controls">
+                        <div class="layer-control">
+                            <div class="layer-header">
+                                <div class="layer-name">
+                                    <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                                        <path d="M17 6.1H3"></path>
+                                        <path d="M21 12.1H3"></path>
+                                        <path d="M15.1 18H3"></path>
+                                    </svg>
+                                    Murmullo Ambiental
+                                </div>
+                                <div class="layer-value" id="murmur-value">0.7</div>
+                            </div>
+                            <input id="murmur" type="range" min="0" max="1" step="0.01" value="0.7" class="layer-slider">
+                            <div class="test-buttons">
+                                <button class="test-button" data-sound="murmur">Probar sonido</button>
+                            </div>
+                        </div>
+                        
+                        <div class="layer-control">
+                            <div class="layer-header">
+                                <div class="layer-name">
+                                    <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                                        <path d="M13.5 3H19L12 21L5 3H10.5"></path>
+                                    </svg>
+                                    Pasos y Movimiento
+                                </div>
+                                <div class="layer-value" id="footsteps-value">0.6</div>
+                            </div>
+                            <input id="footsteps" type="range" min="0" max="1" step="0.01" value="0.6" class="layer-slider">
+                            <div class="test-buttons">
+                                <button class="test-button" data-sound="footsteps">Probar sonido</button>
+                            </div>
+                        </div>
+                        
+                        <div class="layer-control">
+                            <div class="layer-header">
+                                <div class="layer-name">
+                                    <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                                        <path d="M20 7h-9"></path>
+                                        <path d="M14 17H5"></path>
+                                        <circle cx="17" cy="17" r="3"></circle>
+                                        <circle cx="7" cy="7" r="3"></circle>
+                                    </svg>
+                                    Ropa y Perchas
+                                </div>
+                                <div class="layer-value" id="clothing-value">0.5</div>
+                            </div>
+                            <input id="clothing" type="range" min="0" max="1" step="0.01" value="0.5" class="layer-slider">
+                            <div class="test-buttons">
+                                <button class="test-button" data-sound="clothing">Probar sonido</button>
+                            </div>
+                        </div>
+                        
+                        <div class="layer-control">
+                            <div class="layer-header">
+                                <div class="layer-name">
+                                    <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                                        <path d="M9 18V5l12-2v13"></path>
+                                        <circle cx="6" cy="18" r="3"></circle>
+                                        <circle cx="18" cy="16" r="3"></circle>
+                                    </svg>
+                                    Música Ambiental
+                                </div>
+                                <div class="layer-value" id="music-value">0.4</div>
+                            </div>
+                            <input id="music" type="range" min="0" max="1" step="0.01" value="0.4" class="layer-slider">
+                            <div class="test-buttons">
+                                <button class="test-button" data-sound="music">Probar sonido</button>
+                            </div>
+                        </div>
+                        
+                        <div class="layer-control">
+                            <div class="layer-header">
+                                <div class="layer-name">
+                                    <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                                        <path d="M12 2a3 3 0 0 0-3 3v7a3 3 0 0 0 6 0V5a3 3 0 0 0-3-3z"></path>
+                                        <path d="M19 10v2a7 7 0 0 1-14 0v-2"></path>
+                                        <line x1="12" y1="19" x2="12" y2="23"></line>
+                                        <line x1="8" y1="23" x2="16" y2="23"></line>
+                                    </svg>
+                                    Voces Cercanas
+                                </div>
+                                <div class="layer-value" id="voices-value">0.5</div>
+                            </div>
+                            <input id="voices" type="range" min="0" max="1" step="0.01" value="0.5" class="layer-slider">
+                            <div class="test-buttons">
+                                <button class="test-button" data-sound="voices">Probar sonido</button>
+                            </div>
+                        </div>
+                        
+                        <div class="layer-control">
+                            <div class="layer-header">
+                                <div class="layer-name">
+                                    <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                                        <circle cx="12" cy="12" r="10"></circle>
+                                        <path d="M12 8v4"></path>
+                                        <path d="M12 16h.01"></path>
+                                    </svg>
+                                    Elementos de Ansiedad
+                                </div>
+                                <div class="layer-value" id="anxiety-value">0.3</div>
+                            </div>
+                            <input id="anxiety" type="range" min="0" max="1" step="0.01" value="0.3" class="layer-slider">
+                            <div class="test-buttons">
+                                <button class="test-button" data-sound="anxiety">Probar sonido</button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="visualization-panel">
+                    <div class="visualizer">
+                        <canvas id="visualizer"></canvas>
+                    </div>
+                    
+                    <div class="sound-legend">
+                        <div class="legend-item">
+                            <div class="legend-color" style="background: #3b82f6;"></div>
+                            <span>Murmullo ambiental</span>
+                        </div>
+                        <div class="legend-item">
+                            <div class="legend-color" style="background: #10b981;"></div>
+                            <span>Pasos y movimiento</span>
+                        </div>
+                        <div class="legend-item">
+                            <div class="legend-color" style="background: #f59e0b;"></div>
+                            <span>Ropa y perchas</span>
+                        </div>
+                        <div class="legend-item">
+                            <div class="legend-color" style="background: #8b5cf6;"></div>
+                            <span>Música ambiental</span>
+                        </div>
+                        <div class="legend-item">
+                            <div class="legend-color" style="background: #ec4899;"></div>
+                            <span>Voces cercanas</span>
+                        </div>
+                        <div class="legend-item">
+                            <div class="legend-color" style="background: #ef4444;"></div>
+                            <span>Elementos de ansiedad</span>
+                        </div>
+                    </div>
+                    
+                    <div class="emotional-intensity">
+                        <div class="layer-header">
+                            <div class="layer-name">Intensidad Emocional</div>
+                            <div class="layer-value" id="intensity-value">30%</div>
+                        </div>
+                        <div class="intensity-bar">
+                            <div class="intensity-level" id="intensity-level"></div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="info-panel">
+                <h3>Características de cada sonido</h3>
+                <ul>
+                    <li><span class="emotional-aspect">Murmullo ambiental</span> - Ruido suave y constante con filtro de baja frecuencia</li>
+                    <li><span class="emotional-aspect">Pasos y movimiento</span> - Sonidos rítmicos con envolvente percusiva</li>
+                    <li><span class="emotional-aspect">Ropa y perchas</span> - Sonidos metálicos y de fricción con frecuencias altas</li>
+                    <li><span class="emotional-aspect">Música ambiental</span> - Melodía suave con sintetizador y reverberación</li>
+                    <li><span class="emotional-aspect">Voces cercanas</span> - Sonidos vocálicos con formantes definidos</li>
+                    <li><span class="emotional-aspect">Elementos de ansiedad</span> - Latidos, respiración agitada y sonidos de tensión</li>
+                </ul>
+                <p>Usa los botones "Probar sonido" para escuchar cada elemento individualmente y familiarizarte con sus características.</p>
+            </div>
+        </div>
+        
+        <footer>
+            <p>Soundscape Generativo - Sonidos claramente diferenciados</p>
+        </footer>
+    </div>
+
+    <script>
+        // Configuración principal
+        const LOOP_LENGTH = 25 * 60; // 25 minutos en segundos
+        
+        // Elementos de la interfaz
+        const playBtn = document.getElementById('play');
+        const stopBtn = document.getElementById('stop');
+        const statusEl = document.getElementById('status');
+        const masterSlider = document.getElementById('master');
+        const intensityLevel = document.getElementById('intensity-level');
+        const intensityValue = document.getElementById('intensity-value');
+        
+        // Sliders de capas
+        const murmurSlider = document.getElementById('murmur');
+        const footstepsSlider = document.getElementById('footsteps');
+        const clothingSlider = document.getElementById('clothing');
+        const musicSlider = document.getElementById('music');
+        const voicesSlider = document.getElementById('voices');
+        const anxietySlider = document.getElementById('anxiety');
+        
+        // Valores de las capas
+        const murmurValue = document.getElementById('murmur-value');
+        const footstepsValue = document.getElementById('footsteps-value');
+        const clothingValue = document.getElementById('clothing-value');
+        const musicValue = document.getElementById('music-value');
+        const voicesValue = document.getElementById('voices-value');
+        const anxietyValue = document.getElementById('anxiety-value');
+        
+        // Estado del audio
+        let audioCtx = null;
+        let masterGain = null;
+        let convolver = null;
+        let isPlaying = false;
+        let loopStartTime = 0;
+        let scheduledNodes = [];
+        let analyser = null;
+        let visualizationData = null;
+        
+        // Configuración del visualizador
+        const canvas = document.getElementById('visualizer');
+        const canvasCtx = canvas.getContext('2d');
+        
+        // Inicializar el canvas
+        function initCanvas() {
+            canvas.width = canvas.offsetWidth;
+            canvas.height = canvas.offsetHeight;
+        }
+        
+        // Actualizar valores de los sliders
+        function updateSliderValues() {
+            murmurValue.textContent = parseFloat(murmurSlider.value).toFixed(2);
+            footstepsValue.textContent = parseFloat(footstepsSlider.value).toFixed(2);
+            clothingValue.textContent = parseFloat(clothingSlider.value).toFixed(2);
+            musicValue.textContent = parseFloat(musicSlider.value).toFixed(2);
+            voicesValue.textContent = parseFloat(voicesSlider.value).toFixed(2);
+            anxietyValue.textContent = parseFloat(anxietySlider.value).toFixed(2);
+            
+            // Actualizar intensidad emocional
+            const anxietyIntensity = parseFloat(anxietySlider.value);
+            intensityLevel.style.width = `${anxietyIntensity * 100}%`;
+            intensityValue.textContent = `${Math.round(anxietyIntensity * 100)}%`;
+        }
+        
+        // Inicializar el contexto de audio
+        function createAudioContext() {
+            if (audioCtx) return;
+            
+            audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+            
+            // Configurar el analizador para la visualización
+            analyser = audioCtx.createAnalyser();
+            analyser.fftSize = 256;
+            visualizationData = new Uint8Array(analyser.frequencyBinCount);
+            
+            // Configurar nodos de ganancia maestros
+            masterGain = audioCtx.createGain();
+            masterGain.gain.value = parseFloat(masterSlider.value);
+            
+            // Configurar reverberación
+            convolver = audioCtx.createConvolver();
+            convolver.buffer = createImpulseResponse(1.5, 2.5);
+            
+            // Conectar nodos
+            convolver.connect(masterGain);
+            masterGain.connect(analyser);
+            analyser.connect(audioCtx.destination);
+            
+            // Configurar ecualización
+            const eq = audioCtx.createBiquadFilter();
+            eq.type = 'lowshelf';
+            eq.frequency.value = 500;
+            eq.gain.value = -1.5;
+            masterGain.connect(eq);
+            eq.connect(audioCtx.destination);
+            
+            // Iniciar visualización
+            visualize();
+        }
+        
+        // Crear respuesta de impulso para la reverberación
+        function createImpulseResponse(seconds = 2, decay = 2.0) {
+            const rate = audioCtx.sampleRate;
+            const length = seconds * rate | 0;
+            const impulse = audioCtx.createBuffer(2, length, rate);
+            
+            for (let channel = 0; channel < 2; channel++) {
+                const data = impulse.getChannelData(channel);
+                for (let i = 0; i < length; i++) {
+                    data[i] = (Math.random() * 2 - 1) * Math.pow(1 - i / length, decay);
+                }
+            }
+            
+            return impulse;
+        }
+        
+        // Visualización de audio
+        function visualize() {
+            if (!isPlaying || !analyser) {
+                requestAnimationFrame(visualize);
+                return;
+            }
+            
+            // Limpiar canvas
+            canvasCtx.fillStyle = 'rgba(15, 23, 42, 0.2)';
+            canvasCtx.fillRect(0, 0, canvas.width, canvas.height);
+            
+            // Obtener datos de frecuencia
+            analyser.getByteFrequencyData(visualizationData);
+            
+            // Dibujar barras de frecuencia con colores diferentes para cada rango
+            const barWidth = (canvas.width / visualizationData.length) * 2.5;
+            let barHeight;
+            let x = 0;
+            
+            for (let i = 0; i < visualizationData.length; i++) {
+                barHeight = visualizationData[i] / 255 * canvas.height;
+                
+                // Asignar colores según la frecuencia (cada rango representa un tipo de sonido)
+                let color;
+                if (i < visualizationData.length * 0.15) {
+                    color = '#3b82f6'; // Murmullo (bajas frecuencias)
+                } else if (i < visualizationData.length * 0.3) {
+                    color = '#10b981'; // Pasos (frecuencias medias-bajas)
+                } else if (i < visualizationData.length * 0.45) {
+                    color = '#f59e0b'; // Ropa (frecuencias medias)
+                } else if (i < visualizationData.length * 0.6) {
+                    color = '#8b5cf6'; // Música (frecuencias medias-altas)
+                } else if (i < visualizationData.length * 0.75) {
+                    color = '#ec4899'; // Voces (frecuencias altas)
+                } else {
+                    color = '#ef4444'; // Ansiedad (frecuencias muy altas)
+                }
+                
+                canvasCtx.fillStyle = color;
+                canvasCtx.fillRect(x, canvas.height - barHeight, barWidth, barHeight);
+                
+                x += barWidth + 1;
+            }
+            
+            requestAnimationFrame(visualize);
+        }
+        
+        // ========== GENERADORES DE SONIDO MEJORADOS ==========
+        
+        // 1. MURMULLO AMBIENTAL - Ruido suave y constante
+        function createMurmurLayer(startTime) {
+            const buffer = createNoiseBuffer(15);
+            const source = audioCtx.createBufferSource();
+            source.buffer = buffer;
+            source.loop = true;
+            
+            // Filtro de paso bajo para sonido suave
+            const lowpass = audioCtx.createBiquadFilter();
+            lowpass.type = 'lowpass';
+            lowpass.frequency.value = 400;
+            lowpass.Q.value = 0.5;
+            
+            const gainNode = audioCtx.createGain();
+            gainNode.gain.value = 0.4 * parseFloat(murmurSlider.value);
+            
+            // Conectar
+            source.connect(lowpass);
+            lowpass.connect(gainNode);
+            gainNode.connect(convolver);
+            
+            // Iniciar
+            source.start(startTime);
+            
+            scheduledNodes.push({ 
+                node: source, 
+                stopAt: startTime + LOOP_LENGTH 
+            });
+        }
+        
+        // 2. PASOS - Sonidos rítmicos y percusivos
+        function scheduleFootsteps(startTime) {
+            const stepCount = 100;
+            const stepInterval = LOOP_LENGTH / stepCount;
+            
+            for (let i = 0; i < stepCount; i++) {
+                const time = startTime + i * stepInterval + Math.random() * 0.5;
+                const pan = (Math.random() * 2 - 1) * 0.8;
+                
+                createFootstep(
+                    time, 
+                    0.3 * parseFloat(footstepsSlider.value),
+                    pan
+                );
+            }
+        }
+        
+        function createFootstep(time, volume, pan) {
+            // Oscilador para el sonido del impacto
+            const osc = audioCtx.createOscillator();
+            osc.type = 'sine';
+            osc.frequency.value = 100 + Math.random() * 50;
+            
+            const gainNode = audioCtx.createGain();
+            gainNode.gain.value = 0.001;
+            
+            const panner = audioCtx.createStereoPanner();
+            panner.pan.value = pan;
+            
+            // Conectar
+            osc.connect(gainNode);
+            gainNode.connect(panner);
+            panner.connect(convolver);
+            
+            // Envolvente percusiva
+            gainNode.gain.setValueAtTime(0.001, time);
+            gainNode.gain.linearRampToValueAtTime(volume, time + 0.05);
+            gainNode.gain.exponentialRampToValueAtTime(0.001, time + 0.3);
+            
+            osc.start(time);
+            osc.stop(time + 0.3);
+            
+            scheduledNodes.push({ node: osc, stopAt: time + 0.3 });
+        }
+        
+        // 3. ROPA Y PERCHAS - Sonidos metálicos y de fricción
+        function scheduleClothingEvents(startTime) {
+            const eventCount = 80;
+            
+            for (let i = 0; i < eventCount; i++) {
+                const time = startTime + Math.random() * LOOP_LENGTH;
+                const pan = (Math.random() * 2 - 1) * 0.6;
+                
+                createClothingSound(
+                    time,
+                    0.4 * parseFloat(clothingSlider.value),
+                    pan
+                );
+            }
+        }
+        
+        function createClothingSound(time, volume, pan) {
+            // Oscilador de alta frecuencia para sonido metálico
+            const osc = audioCtx.createOscillator();
+            osc.type = 'square';
+            osc.frequency.value = 800 + Math.random() * 1000;
+            
+            const gainNode = audioCtx.createGain();
+            gainNode.gain.value = 0.001;
+            
+            // Filtro de paso alto para sonidos agudos
+            const highpass = audioCtx.createBiquadFilter();
+            highpass.type = 'highpass';
+            highpass.frequency.value = 500;
+            
+            const panner = audioCtx.createStereoPanner();
+            panner.pan.value = pan;
+            
+            // Conectar
+            osc.connect(gainNode);
+            gainNode.connect(highpass);
+            highpass.connect(panner);
+            panner.connect(convolver);
+            
+            // Envolvente rápida
+            gainNode.gain.setValueAtTime(0.001, time);
+            gainNode.gain.linearRampToValueAtTime(volume, time + 0.05);
+            gainNode.gain.exponentialRampToValueAtTime(0.001, time + 0.2);
+            
+            osc.start(time);
+            osc.stop(time + 0.2);
+            
+            scheduledNodes.push({ node: osc, stopAt: time + 0.2 });
+        }
+        
+        // 4. MÚSICA AMBIENTAL - Melodía suave con sintetizador
+        function createMusicBed(startTime) {
+            // Crear una melodía simple con múltiples osciladores
+            const notes = [261.63, 293.66, 329.63, 349.23, 392.00, 440.00, 493.88]; // C D E F G A B
+            const sequence = [0, 2, 4, 2, 0, 4, 2, 4]; // Secuencia de notas
+            
+            let currentTime = startTime;
+            
+            for (let i = 0; i < 50; i++) { // 50 notas en total
+                const noteIndex = sequence[i % sequence.length];
+                const freq = notes[noteIndex] * (1 + (Math.floor(i / 8) % 2) * 0.5); // Cambio de octava cada 8 notas
+                
+                createMusicNote(
+                    currentTime,
+                    freq,
+                    0.2 * parseFloat(musicSlider.value)
+                );
+                
+                currentTime += 2 + Math.random(); // Intervalo entre notas
+            }
+        }
+        
+        function createMusicNote(time, frequency, volume) {
+            const osc = audioCtx.createOscillator();
+            osc.type = 'sine';
+            osc.frequency.value = frequency;
+            
+            const gainNode = audioCtx.createGain();
+            gainNode.gain.value = 0.001;
+            
+            // Conectar
+            osc.connect(gainNode);
+            gainNode.connect(convolver);
+            
+            // Envolvente suave
+            gainNode.gain.setValueAtTime(0.001, time);
+            gainNode.gain.linearRampToValueAtTime(volume, time + 0.5);
+            gainNode.gain.exponentialRampToValueAtTime(0.001, time + 2);
+            
+            osc.start(time);
+            osc.stop(time + 2);
+            
+            scheduledNodes.push({ node: osc, stopAt: time + 2 });
+        }
+        
+        // 5. VOCES CERCANAS - Sonidos vocálicos con formantes
+        function scheduleCloseVoices(startTime) {
+            const voiceCount = 40;
+            
+            for (let i = 0; i < voiceCount; i++) {
+                const time = startTime + Math.random() * LOOP_LENGTH;
+                const pan = (Math.random() * 2 - 1) * 0.9;
+                
+                createVoiceSound(
+                    time,
+                    0.3 * parseFloat(voicesSlider.value),
+                    pan
+                );
+            }
+        }
+        
+        function createVoiceSound(time, volume, pan) {
+            // Oscilador principal con frecuencia vocal
+            const osc = audioCtx.createOscillator();
+            osc.type = 'sawtooth';
+            osc.frequency.value = 120 + Math.random() * 80;
+            
+            // Filtro de formante para sonido vocal
+            const formant = audioCtx.createBiquadFilter();
+            formant.type = 'bandpass';
+            formant.frequency.value = 800 + Math.random() * 400;
+            formant.Q.value = 2;
+            
+            const gainNode = audioCtx.createGain();
+            gainNode.gain.value = 0.001;
+            
+            const panner = audioCtx.createStereoPanner();
+            panner.pan.value = pan;
+            
+            // Conectar
+            osc.connect(formant);
+            formant.connect(gainNode);
+            gainNode.connect(panner);
+            panner.connect(convolver);
+            
+            // Envolvente de voz
+            gainNode.gain.setValueAtTime(0.001, time);
+            gainNode.gain.linearRampToValueAtTime(volume, time + 0.2);
+            gainNode.gain.setValueAtTime(volume, time + 0.2);
+            gainNode.gain.setValueAtTime(volume, time + 0.8);
+            gainNode.gain.exponentialRampToValueAtTime(0.001, time + 1.2);
+            
+            osc.start(time);
+            osc.stop(time + 1.2);
+            
+            scheduledNodes.push({ node: osc, stopAt: time + 1.2 });
+        }
+        
+        // 6. ELEMENTOS DE ANSIEDAD - Sonidos emocionales distintivos
+        function scheduleAnxietyElements(startTime) {
+            // Latidos cardíacos
+            const heartbeatCount = 20;
+            for (let i = 0; i < heartbeatCount; i++) {
+                const time = startTime + Math.random() * LOOP_LENGTH * 0.8;
+                createHeartbeat(time, 0.5 * parseFloat(anxietySlider.value));
+            }
+            
+            // Respiración agitada
+            const breathCount = 15;
+            for (let i = 0; i < breathCount; i++) {
+                const time = startTime + Math.random() * LOOP_LENGTH * 0.8;
+                createAnxiousBreath(time, 0.4 * parseFloat(anxietySlider.value));
+            }
+        }
+        
+        function createHeartbeat(time, volume) {
+            const osc = audioCtx.createOscillator();
+            osc.type = 'sine';
+            osc.frequency.value = 80;
+            
+            const gainNode = audioCtx.createGain();
+            gainNode.gain.value = 0.001;
+            
+            // Conectar
+            osc.connect(gainNode);
+            gainNode.connect(convolver);
+            
+            // Patrón de latido
+            gainNode.gain.setValueAtTime(0.001, time);
+            gainNode.gain.linearRampToValueAtTime(volume, time + 0.05);
+            gainNode.gain.exponentialRampToValueAtTime(0.001, time + 0.15);
+            
+            gainNode.gain.setValueAtTime(0.001, time + 0.2);
+            gainNode.gain.linearRampToValueAtTime(volume * 0.8, time + 0.25);
+            gainNode.gain.exponentialRampToValueAtTime(0.001, time + 0.4);
+            
+            osc.start(time);
+            osc.stop(time + 0.5);
+            
+            scheduledNodes.push({ node: osc, stopAt: time + 0.5 });
+        }
+        
+        function createAnxiousBreath(time, volume) {
+            const noise = audioCtx.createBufferSource();
+            noise.buffer = createNoiseBuffer(2.5);
+            
+            const gainNode = audioCtx.createGain();
+            gainNode.gain.value = 0.001;
+            
+            // Filtro de paso de banda para sonido respiratorio
+            const bandpass = audioCtx.createBiquadFilter();
+            bandpass.type = 'bandpass';
+            bandpass.frequency.value = 500;
+            bandpass.Q.value = 1.0;
+            
+            // Conectar
+            noise.connect(bandpass);
+            bandpass.connect(gainNode);
+            gainNode.connect(convolver);
+            
+            // Patrón de respiración ansiosa
+            gainNode.gain.setValueAtTime(0.001, time);
+            gainNode.gain.linearRampToValueAtTime(volume, time + 0.5); // Inhalación rápida
+            gainNode.gain.setValueAtTime(volume, time + 0.5);
+            gainNode.gain.setValueAtTime(volume, time + 0.8); // Retención corta
+            gainNode.gain.exponentialRampToValueAtTime(0.001, time + 2.0); // Exhalación
+            
+            noise.start(time);
+            noise.stop(time + 2.0);
+            
+            scheduledNodes.push({ node: noise, stopAt: time + 2.0 });
+        }
+        
+        // ========== FUNCIONES DE PRUEBA DE SONIDOS INDIVIDUALES ==========
+        
+        function testSound(soundType) {
+            createAudioContext();
+            
+            const now = audioCtx.currentTime;
+            let volume = 0.5;
+            
+            switch(soundType) {
+                case 'murmur':
+                    // Reproducir un segmento de murmullo
+                    const buffer = createNoiseBuffer(3);
+                    const source = audioCtx.createBufferSource();
+                    source.buffer = buffer;
+                    
+                    const lowpass = audioCtx.createBiquadFilter();
+                    lowpass.type = 'lowpass';
+                    lowpass.frequency.value = 400;
+                    
+                    const gainNode = audioCtx.createGain();
+                    gainNode.gain.value = volume;
+                    
+                    source.connect(lowpass);
+                    lowpass.connect(gainNode);
+                    gainNode.connect(convolver);
+                    
+                    source.start(now);
+                    source.stop(now + 3);
+                    break;
+                    
+                case 'footsteps':
+                    // Reproducir unos pasos de prueba
+                    for (let i = 0; i < 4; i++) {
+                        createFootstep(now + i * 0.5, volume * 0.3, (i % 2 === 0) ? -0.5 : 0.5);
+                    }
+                    break;
+                    
+                case 'clothing':
+                    // Reproducir sonidos de ropa
+                    createClothingSound(now, volume * 0.4, 0);
+                    createClothingSound(now + 0.3, volume * 0.4, -0.5);
+                    createClothingSound(now + 0.6, volume * 0.4, 0.5);
+                    break;
+                    
+                case 'music':
+                    // Reproducir una secuencia musical corta
+                    const notes = [261.63, 329.63, 392.00];
+                    notes.forEach((freq, i) => {
+                        createMusicNote(now + i * 0.8, freq, volume * 0.2);
+                    });
+                    break;
+                    
+                case 'voices':
+                    // Reproducir voces de prueba
+                    createVoiceSound(now, volume * 0.3, -0.7);
+                    createVoiceSound(now + 1.5, volume * 0.3, 0.7);
+                    break;
+                    
+                case 'anxiety':
+                    // Reproducir elementos de ansiedad
+                    createHeartbeat(now, volume * 0.5);
+                    createAnxiousBreath(now + 1, volume * 0.4);
+                    break;
+            }
+        }
+        
+        // ========== FUNCIONES AUXILIARES ==========
+        
+        // Crear buffer de ruido
+        function createNoiseBuffer(duration = 1.0) {
+            const rate = audioCtx.sampleRate;
+            const len = Math.floor(duration * rate);
+            const buffer = audioCtx.createBuffer(1, len, rate);
+            const data = buffer.getChannelData(0);
+            
+            for (let i = 0; i < len; i++) {
+                data[i] = (Math.random() * 2 - 1) * 0.5;
+            }
+            
+            return buffer;
+        }
+        
+        // Programar todo el loop
+        function scheduleLoop() {
+            if (!audioCtx) return;
+            
+            loopStartTime = audioCtx.currentTime + 0.1;
+            
+            // Crear capas de sonido
+            createMurmurLayer(loopStartTime);
+            scheduleFootsteps(loopStartTime);
+            scheduleClothingEvents(loopStartTime);
+            createMusicBed(loopStartTime);
+            scheduleCloseVoices(loopStartTime);
+            scheduleAnxietyElements(loopStartTime);
+            
+            // Asegurar limpieza y reinicio exacto después de la duración del loop
+            scheduledNodes.push({ node: {}, stopAt: loopStartTime + LOOP_LENGTH });
+            
+            // Configurar un timeout para reiniciar el loop
+            const milliseconds = Math.max(0, (loopStartTime + LOOP_LENGTH - audioCtx.currentTime) * 1000 - 100);
+            
+            // Limpiar temporizador de reinicio anterior si existe
+            if (window.loopRestartTimer) clearTimeout(window.loopRestartTimer);
+            
+            window.loopRestartTimer = setTimeout(() => {
+                fadeOutAndRestart();
+            }, milliseconds);
+        }
+        
+        // Fundido de salida y reinicio
+        function fadeOutAndRestart() {
+            if (!masterGain) return;
+            
+            const now = audioCtx.currentTime;
+            
+            // Cancelar valores programados
+            masterGain.gain.cancelScheduledValues(now);
+            masterGain.gain.setValueAtTime(masterGain.gain.value, now);
+            masterGain.gain.linearRampToValueAtTime(masterGain.gain.value * 0.001, now + 1.0);
+            
+            // Después del fundido, detener todos los nodos programados y reprogramar un loop nuevo
+            setTimeout(() => {
+                // Detener y eliminar
+                scheduledNodes.forEach(obj => {
+                    try {
+                        if (obj.node && obj.node.stop) obj.node.stop();
+                    } catch (e) {}
+                    
+                    try {
+                        if (obj.node && obj.node.disconnect) obj.node.disconnect();
+                    } catch (e) {}
+                });
+                
+                scheduledNodes = [];
+                
+                // Restaurar nivel de ganancia maestro
+                masterGain.gain.setValueAtTime(parseFloat(masterSlider.value), audioCtx.currentTime + 0.05);
+                
+                // Programar siguiente loop
+                scheduleLoop();
+            }, 1100);
+        }
+        
+        // Iniciar soundscape
+        function startSoundscape() {
+            if (isPlaying) return;
+            
+            createAudioContext();
+            
+            // Reanudar contexto de audio si está suspendido
+            audioCtx.resume().then(() => {
+                scheduleLoop();
+                isPlaying = true;
+                playBtn.disabled = true;
+                stopBtn.disabled = false;
+                statusEl.textContent = 'Reproduciendo (Loop activo)';
+            }).catch(err => {
+                console.error('Error al reanudar audio:', err);
+                statusEl.textContent = 'Error de audio';
+            });
+        }
+        
+        // Detener soundscape
+        function stopSoundscape() {
+            if (!isPlaying) return;
+            
+            isPlaying = false;
+            playBtn.disabled = false;
+            stopBtn.disabled = true;
+            statusEl.textContent = 'Detenido';
+            
+            // Limpiar temporizador
+            if (window.loopRestartTimer) clearTimeout(window.loopRestartTimer);
+            
+            // Detener nodos programados
+            scheduledNodes.forEach(obj => {
+                try {
+                    if (obj.node && obj.node.stop) obj.node.stop();
+                } catch (e) {}
+                
+                try {
+                    if (obj.node && obj.node.disconnect) obj.node.disconnect();
+                } catch (e) {}
+            });
+            
+            scheduledNodes = [];
+            
+            // Cerrar contexto de audio para liberar recursos
+            try {
+                if (audioCtx) {
+                    audioCtx.close();
+                }
+            } catch (e) {}
+            
+            audioCtx = null;
+            masterGain = null;
+            convolver = null;
+        }
+        
+        // ========== INICIALIZACIÓN ==========
+        
+        // Event listeners
+        playBtn.addEventListener('click', () => {
+            startSoundscape();
+        });
+        
+        stopBtn.addEventListener('click', () => {
+            stopSoundscape();
+        });
+        
+        // Botones de prueba de sonidos individuales
+        document.querySelectorAll('.test-button').forEach(button => {
+            button.addEventListener('click', (e) => {
+                const soundType = e.target.getAttribute('data-sound');
+                testSound(soundType);
+            });
+        });
+        
+        // Actualizar valores de los sliders cuando cambian
+        murmurSlider.addEventListener('input', updateSliderValues);
+        footstepsSlider.addEventListener('input', updateSliderValues);
+        clothingSlider.addEventListener('input', updateSliderValues);
+        musicSlider.addEventListener('input', updateSliderValues);
+        voicesSlider.addEventListener('input', updateSliderValues);
+        anxietySlider.addEventListener('input', updateSliderValues);
+        
+        // Inicializar
+        window.addEventListener('load', () => {
+            initCanvas();
+            updateSliderValues();
+        });
+        
+        // Redimensionar canvas cuando cambia el tamaño de la ventana
+        window.addEventListener('resize', initCanvas);
+    </script>
+</body>
+</html>
