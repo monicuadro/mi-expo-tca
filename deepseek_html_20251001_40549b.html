@@ -1,0 +1,582 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+    <title>System Bug: Mirror Reflection - Mobile Installation</title>
+    <style>
+        :root {
+            --medical-blue: #00ffff;
+            --medical-pink: #ff00ff;
+            --medical-green: #00ff00;
+            --dark-bg: rgba(0, 20, 40, 0.95);
+        }
+        
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: 'Courier New', monospace;
+            background: #000;
+            color: var(--medical-blue);
+            overflow: hidden;
+            width: 100vw;
+            height: 100vh;
+            position: fixed;
+        }
+        
+        #container {
+            position: relative;
+            width: 100%;
+            height: 100%;
+            display: flex;
+            flex-direction: column;
+        }
+        
+        #video {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+            transform: scaleX(-1); /* Efecto espejo */
+        }
+        
+        #canvas {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+        }
+        
+        .glitch-overlay {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: linear-gradient(
+                45deg,
+                rgba(255, 0, 0, 0.1),
+                rgba(0, 255, 255, 0.1),
+                rgba(0, 255, 0, 0.1)
+            );
+            opacity: 0;
+            pointer-events: none;
+            mix-blend-mode: overlay;
+            z-index: 3;
+        }
+        
+        /* Controles optimizados para TV */
+        #controls {
+            position: absolute;
+            bottom: 20px;
+            left: 50%;
+            transform: translateX(-50%);
+            z-index: 10;
+            background: var(--dark-bg);
+            padding: 15px;
+            border-radius: 10px;
+            width: 90%;
+            max-width: 500px;
+            border: 2px solid var(--medical-blue);
+            box-shadow: 0 0 20px rgba(0, 255, 255, 0.3);
+        }
+        
+        .control-group {
+            margin-bottom: 15px;
+        }
+        
+        .medical-label {
+            color: var(--medical-blue);
+            font-size: 16px;
+            letter-spacing: 1px;
+            margin-bottom: 8px;
+            display: block;
+            text-align: center;
+        }
+        
+        .medical-slider {
+            width: 100%;
+            height: 25px;
+            -webkit-appearance: none;
+            background: linear-gradient(90deg, var(--medical-blue), var(--medical-pink));
+            border-radius: 12px;
+            outline: none;
+        }
+        
+        .medical-slider::-webkit-slider-thumb {
+            -webkit-appearance: none;
+            width: 25px;
+            height: 25px;
+            border-radius: 50%;
+            background: white;
+            cursor: pointer;
+            border: 2px solid var(--medical-blue);
+        }
+        
+        .value-display {
+            color: var(--medical-green);
+            font-size: 16px;
+            text-align: center;
+            display: block;
+            margin-top: 5px;
+        }
+        
+        .phase-buttons {
+            display: grid;
+            grid-template-columns: repeat(4, 1fr);
+            gap: 8px;
+            margin: 10px 0;
+        }
+        
+        .phase-btn {
+            background: var(--dark-bg);
+            color: var(--medical-blue);
+            border: 1px solid var(--medical-blue);
+            padding: 10px 5px;
+            border-radius: 6px;
+            font-size: 12px;
+            cursor: pointer;
+            transition: all 0.3s;
+            text-align: center;
+        }
+        
+        .phase-btn.active {
+            background: var(--medical-blue);
+            color: black;
+            font-weight: bold;
+        }
+        
+        .vital-signs {
+            display: flex;
+            justify-content: space-around;
+            margin-top: 10px;
+            font-size: 14px;
+            color: var(--medical-green);
+        }
+        
+        #reflections {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            color: white;
+            font-style: italic;
+            text-align: center;
+            pointer-events: none;
+            opacity: 0;
+            transition: opacity 1s;
+            z-index: 5;
+            background: rgba(0, 0, 0, 0.8);
+            padding: 20px;
+            border-radius: 10px;
+            max-width: 80%;
+            font-size: 20px;
+            border: 1px solid var(--medical-pink);
+        }
+        
+        .reflection-visible {
+            opacity: 1 !important;
+        }
+        
+        #instructions {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: var(--dark-bg);
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            z-index: 20;
+            padding: 20px;
+            text-align: center;
+        }
+        
+        .start-btn {
+            background: var(--medical-pink);
+            color: black;
+            border: none;
+            padding: 15px 30px;
+            font-size: 18px;
+            border-radius: 8px;
+            cursor: pointer;
+            margin-top: 20px;
+            font-weight: bold;
+        }
+        
+        #loading {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            background: var(--dark-bg);
+            padding: 20px;
+            border-radius: 10px;
+            text-align: center;
+            z-index: 15;
+            border: 1px solid var(--medical-blue);
+        }
+        
+        /* Efectos de performance para móvil */
+        @media (max-width: 768px) {
+            #canvas {
+                transform: scaleX(-1); /* Espejo en canvas para mejor performance */
+            }
+            
+            .phase-btn {
+                font-size: 11px;
+                padding: 8px 4px;
+            }
+            
+            #reflections {
+                font-size: 18px;
+                padding: 15px;
+            }
+        }
+        
+        /* Orientación landscape para TV */
+        @media (orientation: landscape) {
+            .phase-buttons {
+                grid-template-columns: repeat(7, 1fr);
+            }
+            
+            .phase-btn {
+                font-size: 10px;
+                padding: 6px 2px;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div id="container">
+        <video id="video" autoplay muted playsinline></video>
+        <canvas id="canvas"></canvas>
+        
+        <div class="glitch-overlay" id="glitch-overlay"></div>
+        
+        <div id="reflections"></div>
+        
+        <div id="instructions">
+            <h1>SYSTEM BUG: MIRROR REFLECTION</h1>
+            <p>Una exploración sobre percepción corporal y dismorfia</p>
+            <p>Al iniciar, verás tu reflejo con distorsiones controladas</p>
+            <p>Usa los controles para modificar tu experiencia perceptual</p>
+            <button class="start-btn" onclick="startExperience()">INICIAR EXPERIENCIA</button>
+        </div>
+        
+        <div id="loading" style="display: none;">
+            <p>INICIALIZANDO SISTEMA VISUAL...</p>
+            <p>Conectando con cámara externa</p>
+        </div>
+        
+        <div id="controls" style="display: none;">
+            <div class="control-group">
+                <label class="medical-label">NIVEL DE DISTORSIÓN PERCEPTUAL</label>
+                <input type="range" id="distortion-slider" class="medical-slider" min="0" max="100" value="0">
+                <span class="value-display" id="distortion-value">SISTEMA ESTABLE</span>
+            </div>
+            
+            <div class="phase-buttons">
+                <button class="phase-btn active" onclick="setPhase(0)">NORMAL</button>
+                <button class="phase-btn" onclick="setPhase(1)">TENSIÓN</button>
+                <button class="phase-btn" onclick="setPhase(2)">CRISIS</button>
+                <button class="phase-btn" onclick="setPhase(3)">FLUIDEZ</button>
+                <button class="phase-btn" onclick="setPhase(4)">FRAGMENTACIÓN</button>
+                <button class="phase-btn" onclick="setPhase(5)">EXPANSIÓN</button>
+                <button class="phase-btn" onclick="setPhase(6)">INTEGRACIÓN</button>
+            </div>
+            
+            <div class="vital-signs">
+                <span>COHERENCIA: <span id="coherence">98%</span></span>
+                <span>ESTABILIDAD: <span id="stability">95%</span></span>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // Elementos DOM
+        const video = document.getElementById('video');
+        const canvas = document.getElementById('canvas');
+        const ctx = canvas.getContext('2d');
+        const instructions = document.getElementById('instructions');
+        const loading = document.getElementById('loading');
+        const controls = document.getElementById('controls');
+        const distortionSlider = document.getElementById('distortion-slider');
+        const distortionValue = document.getElementById('distortion-value');
+        const reflections = document.getElementById('reflections');
+        const glitchOverlay = document.getElementById('glitch-overlay');
+        const coherenceEl = document.getElementById('coherence');
+        const stabilityEl = document.getElementById('stability');
+        
+        // Estados
+        let currentPhase = 0;
+        let isRunning = false;
+        let animationId;
+        let stream;
+        
+        // Mensajes de reflexión
+        const reflectionMessages = [
+            "¿Este reflejo me pertenece?",
+            "La imagen vacila entre lo real y lo percibido",
+            "Mi cuerpo como territorio de batalla visual",
+            "En la distorsión encuentro nuevas formas",
+            "¿Dónde termina el cuerpo y empieza el yo?",
+            "Cada parpadeo revela una verdad diferente",
+            "Más allá de la forma, hay presencia pura",
+            "El espejo miente... ¿o soy yo quien no ve?"
+        ];
+        
+        // Iniciar experiencia
+        function startExperience() {
+            instructions.style.display = 'none';
+            loading.style.display = 'block';
+            initCamera();
+        }
+        
+        // Inicializar cámara USB
+        async function initCamera() {
+            try {
+                // Para cámara USB externa en móvil
+                const constraints = {
+                    video: {
+                        width: { ideal: 1280 },
+                        height: { ideal: 720 },
+                        frameRate: { ideal: 30 }
+                    },
+                    audio: false
+                };
+                
+                // Navegador móvil optimizado
+                if (navigator.mediaDevices && navigator.mediaDevices.getUserMedia) {
+                    stream = await navigator.mediaDevices.getUserMedia(constraints);
+                    setupVideo(stream);
+                } else {
+                    throw new Error('Navegador no compatible con cámara USB');
+                }
+            } catch (error) {
+                console.error('Error cámara:', error);
+                loading.innerHTML = `
+                    <p>ERROR DE CÁMARA USB</p>
+                    <p>Conecta una cámara USB con adaptador OTG</p>
+                    <button class="start-btn" onclick="initCamera()">REINTENTAR</button>
+                `;
+            }
+        }
+        
+        function setupVideo(mediaStream) {
+            video.srcObject = mediaStream;
+            
+            video.onloadedmetadata = () => {
+                // Configurar canvas con dimensiones del video
+                canvas.width = video.videoWidth;
+                canvas.height = video.videoHeight;
+                
+                loading.style.display = 'none';
+                controls.style.display = 'block';
+                isRunning = true;
+                
+                // Iniciar bucle de renderizado
+                render();
+            };
+        }
+        
+        // Bucle principal optimizado para móvil
+        function render() {
+            if (!isRunning || video.readyState !== video.HAVE_ENOUGH_DATA) {
+                animationId = requestAnimationFrame(render);
+                return;
+            }
+            
+            // Limpiar canvas
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+            
+            // Dibujar video (ya viene con espejo por transform CSS)
+            ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
+            
+            // Aplicar efectos si hay intensidad
+            const intensity = parseInt(distortionSlider.value);
+            if (intensity > 0) {
+                applyDistortionEffects(intensity);
+            }
+            
+            // Efectos de glitch aleatorios
+            if (intensity > 30 && Math.random() < intensity / 200) {
+                triggerGlitchEffect(intensity);
+            }
+            
+            // Mensajes reflexivos aleatorios
+            if (intensity > 50 && Math.random() < intensity / 300) {
+                showRandomReflection();
+            }
+            
+            animationId = requestAnimationFrame(render);
+        }
+        
+        // Aplicar efectos de distorsión optimizados para móvil
+        function applyDistortionEffects(intensity) {
+            const imageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
+            const data = imageData.data;
+            const tempData = new Uint8ClampedArray(data);
+            
+            const width = canvas.width;
+            const height = canvas.height;
+            const centerX = width / 2;
+            const centerY = height / 2;
+            const time = Date.now() * 0.001;
+            
+            for (let y = 0; y < height; y += 2) { // Paso de 2px para mejor performance
+                for (let x = 0; x < width; x += 2) {
+                    const idx = (y * width + x) * 4;
+                    
+                    // Diferentes efectos por fase
+                    let newX = x, newY = y;
+                    
+                    switch(currentPhase) {
+                        case 0: // NORMAL - efectos sutiles
+                            newX += Math.sin(y * 0.02 + time) * (intensity / 100) * 2;
+                            newY += Math.cos(x * 0.02 + time) * (intensity / 100) * 2;
+                            break;
+                            
+                        case 1: // TENSIÓN - ondas
+                            newX += Math.sin(y * 0.03 + time * 2) * (intensity / 100) * 4;
+                            newY += Math.cos(x * 0.025 + time * 1.5) * (intensity / 100) * 3;
+                            break;
+                            
+                        case 2: // CRISIS - efectos intensos
+                            newX += Math.sin(y * 0.04 + time * 3) * (intensity / 100) * 8;
+                            newY += Math.cos(x * 0.03 + time * 2.5) * (intensity / 100) * 6;
+                            
+                            // Bulge en centro
+                            const dist = Math.sqrt((x - centerX)**2 + (y - centerY)**2);
+                            if (dist < 150) {
+                                const bulge = (150 - dist) / 150 * (intensity / 100) * 0.8;
+                                newX += (x - centerX) * bulge;
+                                newY += (y - centerY) * bulge;
+                            }
+                            break;
+                            
+                        case 3: // FLUIDEZ - efectos suaves
+                            newX += Math.sin(y * 0.015 + time * 1.2) * (intensity / 100) * 3;
+                            newY += Math.cos(x * 0.012 + time) * (intensity / 100) * 2;
+                            break;
+                            
+                        case 4: // FRAGMENTACIÓN
+                            newX += Math.sin(y * 0.05 + time * 4) * (intensity / 100) * 6;
+                            newY += Math.cos(x * 0.04 + time * 3) * (intensity / 100) * 5;
+                            break;
+                            
+                        case 5: // EXPANSIÓN
+                            const expandDist = Math.sqrt((x - centerX)**2 + (y - centerY)**2);
+                            const expand = expandDist * (intensity / 100) * 0.01;
+                            newX += (x - centerX) * expand;
+                            newY += (y - centerY) * expand;
+                            break;
+                            
+                        case 6: // INTEGRACIÓN - efectos armónicos
+                            newX += Math.sin(y * 0.01 + time * 0.5) * (intensity / 100) * 1.5;
+                            newY += Math.cos(x * 0.01 + time * 0.5) * (intensity / 100) * 1.5;
+                            break;
+                    }
+                    
+                    // Asegurar coordenadas dentro de los límites
+                    newX = Math.max(0, Math.min(width - 1, newX));
+                    newY = Math.max(0, Math.min(height - 1, newY));
+                    
+                    // Interpolación simple (mejor performance que bilineal en móvil)
+                    const newIdx = (Math.floor(newY) * width + Math.floor(newX)) * 4;
+                    
+                    // Copiar pixel
+                    if (newIdx + 3 < tempData.length) {
+                        data[idx] = tempData[newIdx]; // R
+                        data[idx + 1] = tempData[newIdx + 1]; // G
+                        data[idx + 2] = tempData[newIdx + 2]; // B
+                        // Alpha se mantiene igual
+                    }
+                }
+            }
+            
+            ctx.putImageData(imageData, 0, 0);
+        }
+        
+        // Efectos de glitch
+        function triggerGlitchEffect(intensity) {
+            // Parpadeo visual
+            glitchOverlay.style.opacity = '0.3';
+            setTimeout(() => {
+                glitchOverlay.style.opacity = '0';
+            }, 100);
+            
+            // Desplazamiento horizontal aleatorio
+            if (Math.random() < 0.3) {
+                const shift = (Math.random() - 0.5) * intensity * 2;
+                ctx.drawImage(canvas, shift, 0);
+            }
+        }
+        
+        // Mostrar mensaje reflexivo
+        function showRandomReflection() {
+            const message = reflectionMessages[Math.floor(Math.random() * reflectionMessages.length)];
+            reflections.textContent = `"${message}"`;
+            reflections.classList.add('reflection-visible');
+            
+            setTimeout(() => {
+                reflections.classList.remove('reflection-visible');
+            }, 3000);
+        }
+        
+        // Cambiar fase
+        function setPhase(phase) {
+            currentPhase = phase;
+            
+            // Actualizar botones
+            document.querySelectorAll('.phase-btn').forEach((btn, index) => {
+                btn.classList.toggle('active', index === phase);
+            });
+            
+            // Efecto visual de transición
+            glitchOverlay.style.opacity = '0.5';
+            setTimeout(() => {
+                glitchOverlay.style.opacity = '0';
+            }, 200);
+        }
+        
+        // Actualizar valores en tiempo real
+        distortionSlider.addEventListener('input', (e) => {
+            const value = e.target.value;
+            distortionValue.textContent = value === '0' ? 'SISTEMA ESTABLE' : `${value}%`;
+            
+            // Actualizar signos vitales
+            const coherence = Math.max(10, 100 - value);
+            const stability = Math.max(15, 100 - value * 0.7);
+            
+            coherenceEl.textContent = `${coherence}%`;
+            stabilityEl.textContent = `${stability}%`;
+            
+            // Cambiar colores según valores
+            coherenceEl.style.color = coherence > 70 ? '#00ff00' : coherence > 40 ? '#ffff00' : '#ff0000';
+            stabilityEl.style.color = stability > 70 ? '#00ff00' : stability > 40 ? '#ffff00' : '#ff0000';
+        });
+        
+        // Limpieza al salir
+        window.addEventListener('beforeunload', () => {
+            isRunning = false;
+            if (stream) {
+                stream.getTracks().forEach(track => track.stop());
+            }
+            if (animationId) {
+                cancelAnimationFrame(animationId);
+            }
+        });
+    </script>
+</body>
+</html>
