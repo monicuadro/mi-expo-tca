@@ -1,0 +1,921 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+    <title>System Bug: Mirror Reflection</title>
+    <style>
+        :root {
+            --medical-blue: #00ffff;
+            --medical-pink: #ff00ff;
+            --medical-green: #00ff00;
+            --dark-bg: rgba(0, 20, 40, 0.8);
+        }
+        
+        body {
+            margin: 0;
+            padding: 0;
+            font-family: 'Courier New', monospace;
+            background: #000;
+            color: #fff;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            height: 100vh;
+            overflow: hidden;
+        }
+        #container {
+            position: relative;
+            width: 100vw;
+            height: 100vh;
+            display: flex;
+            flex-direction: column;
+        }
+        #video {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+        }
+        #canvas {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+        }
+        #comparative-view {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            display: none;
+        }
+        #normal-side, #distorted-side {
+            position: absolute;
+            top: 0;
+            width: 50%;
+            height: 100%;
+            overflow: hidden;
+        }
+        #normal-side { left: 0; }
+        #distorted-side { right: 0; }
+        #normal-canvas, #distorted-canvas {
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+        }
+        #normal-label, #distorted-label {
+            position: absolute;
+            top: 10px;
+            padding: 5px 10px;
+            background: var(--dark-bg);
+            border: 1px solid var(--medical-blue);
+            font-size: 12px;
+            z-index: 5;
+        }
+        #normal-label { left: 10px; }
+        #distorted-label { right: 10px; }
+        
+        /* Controles médicos */
+        #controls {
+            position: absolute;
+            bottom: 50px;
+            left: 50%;
+            transform: translateX(-50%);
+            z-index: 10;
+            text-align: center;
+            background: var(--dark-bg);
+            padding: 12px;
+            border-radius: 8px;
+            width: 90%;
+            max-width: 400px;
+            transition: opacity 0.3s;
+            border: 1px solid var(--medical-blue);
+            box-shadow: 0 0 15px rgba(0, 255, 255, 0.3);
+        }
+        #controls.hidden { opacity: 0; pointer-events: none; }
+        
+        .control-group {
+            margin-bottom: 10px;
+        }
+        
+        .medical-label {
+            color: var(--medical-blue);
+            font-size: 12px;
+            letter-spacing: 1px;
+            margin-bottom: 5px;
+            display: block;
+        }
+        
+        .medical-slider {
+            width: 100%;
+            margin: 5px 0;
+            height: 20px;
+            -webkit-appearance: none;
+            background: linear-gradient(90deg, var(--medical-blue), var(--medical-pink));
+            border-radius: 10px;
+            outline: none;
+        }
+        
+        .medical-slider::-webkit-slider-thumb {
+            -webkit-appearance: none;
+            width: 20px;
+            height: 20px;
+            border-radius: 50%;
+            background: white;
+            cursor: pointer;
+            border: 1px solid var(--medical-blue);
+        }
+        
+        .value-display {
+            color: var(--medical-green);
+            font-size: 12px;
+            margin-left: 10px;
+        }
+        
+        .phase-buttons {
+            display: flex;
+            justify-content: space-between;
+            margin: 10px 0;
+            gap: 5px;
+        }
+        
+        .phase-btn {
+            background: var(--dark-bg);
+            color: var(--medical-blue);
+            border: 1px solid var(--medical-blue);
+            padding: 6px 8px;
+            border-radius: 5px;
+            font-size: 10px;
+            flex: 1;
+            transition: all 0.3s;
+            cursor: pointer;
+        }
+        
+        .phase-btn.active {
+            background: var(--medical-blue);
+            color: black;
+            font-weight: bold;
+        }
+        
+        .action-buttons {
+            display: flex;
+            justify-content: space-between;
+            margin-top: 10px;
+            gap: 5px;
+        }
+        
+        .action-btn {
+            background: var(--dark-bg);
+            color: white;
+            border: 1px solid var(--medical-pink);
+            padding: 6px 10px;
+            border-radius: 5px;
+            font-size: 11px;
+            flex: 1;
+            cursor: pointer;
+            transition: all 0.3s;
+        }
+        
+        .action-btn:hover {
+            background: var(--medical-pink);
+            color: black;
+        }
+        
+        .vital-signs {
+            display: flex;
+            justify-content: space-between;
+            margin-top: 8px;
+            font-size: 10px;
+            color: var(--medical-green);
+        }
+        
+        /* Mensajes de reflexión */
+        #reflections {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            color: white;
+            font-style: italic;
+            text-align: center;
+            pointer-events: none;
+            opacity: 0;
+            transition: opacity 2s;
+            z-index: 5;
+            background: rgba(0, 0, 0, 0.7);
+            padding: 15px;
+            border-radius: 10px;
+            max-width: 80%;
+            font-size: 18px;
+        }
+        
+        .reflection-visible {
+            opacity: 1 !important;
+        }
+        
+        /* Pantallas de estado */
+        #instructions {
+            position: absolute;
+            top: 20px;
+            left: 20px;
+            right: 20px;
+            background: var(--dark-bg);
+            padding: 15px;
+            border-radius: 10px;
+            z-index: 20;
+            text-align: center;
+            border: 1px solid var(--medical-blue);
+            box-shadow: 0 0 15px rgba(0, 255, 255, 0.3);
+        }
+        
+        #loading, #error {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            z-index: 15;
+            font-size: 16px;
+            text-align: center;
+            background: var(--dark-bg);
+            padding: 20px;
+            border-radius: 10px;
+            color: #fff;
+            border: 1px solid var(--medical-blue);
+        }
+        
+        #session-report {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            z-index: 25;
+            background: var(--dark-bg);
+            padding: 20px;
+            border-radius: 10px;
+            color: white;
+            width: 80%;
+            max-width: 500px;
+            display: none;
+            border: 1px solid var(--medical-blue);
+            max-height: 80vh;
+            overflow-y: auto;
+        }
+        
+        #fps { 
+            position: absolute; 
+            top: 10px; 
+            right: 10px; 
+            font-size: 11px;
+            z-index: 10; 
+            background: var(--dark-bg);
+            padding: 4px;
+            border-radius: 5px;
+            color: var(--medical-green);
+            border: 1px solid var(--medical-blue);
+        }
+        
+        .close-btn {
+            background: var(--medical-pink);
+            color: black;
+            border: none;
+            padding: 8px 15px;
+            border-radius: 5px;
+            cursor: pointer;
+            margin-top: 15px;
+            font-weight: bold;
+        }
+        
+        .glitch-overlay {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: linear-gradient(
+                rgba(255, 0, 0, 0.1),
+                rgba(0, 255, 255, 0.1),
+                rgba(0, 255, 0, 0.1)
+            );
+            opacity: 0;
+            pointer-events: none;
+            mix-blend-mode: overlay;
+            z-index: 3;
+        }
+        
+        @media (max-width: 768px) {
+            #controls { 
+                width: 95%;
+                padding: 10px;
+                bottom: 60px;
+            }
+            
+            .phase-btn, .action-btn {
+                font-size: 9px;
+                padding: 5px 4px;
+            }
+            
+            #reflections {
+                font-size: 16px;
+            }
+            
+            .medical-label {
+                font-size: 11px;
+            }
+        }
+        
+        @media (orientation: landscape) and (max-height: 500px) {
+            #controls { 
+                bottom: 40px; 
+                padding: 8px; 
+                opacity: 0.9; 
+            }
+            
+            .phase-buttons, .action-buttons {
+                margin: 5px 0;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div id="container">
+        <video id="video" autoplay muted playsinline></video>
+        <canvas id="canvas"></canvas>
+        
+        <!-- Vista comparativa -->
+        <div id="comparative-view">
+            <div id="normal-side">
+                <canvas id="normal-canvas"></canvas>
+                <div id="normal-label">REALIDAD</div>
+            </div>
+            <div id="distorted-side">
+                <canvas id="distorted-canvas"></canvas>
+                <div id="distorted-label">PERCEPCIÓN</div>
+            </div>
+        </div>
+        
+        <div class="glitch-overlay" id="glitch-overlay"></div>
+        
+        <!-- Mensajes de reflexión -->
+        <div id="reflections"></div>
+        
+        <!-- Pantalla de instrucciones -->
+        <div id="instructions">
+            <h2>SYSTEM BUG: MIRROR REFLECTION</h2>
+            <p>Una exploración inmersiva sobre la dismorfia corporal y la percepción del yo</p>
+            <p>Usa los controles para modificar tu percepción visual y experimenta diferentes fases emocionales.</p>
+            <button class="close-btn" onclick="closeInstructions()">INICIAR EXPERIENCIA</button>
+        </div>
+        
+        <!-- Estados de carga/error -->
+        <div id="loading">INICIALIZANDO SISTEMA VISUAL...</div>
+        <div id="error" style="display: none;">
+            <p>ERROR EN SISTEMA DE CÁMARA</p>
+            <p>Verifica permisos o conexión HTTPS</p>
+            <button class="close-btn" onclick="initCamera()">REINTENTAR</button>
+        </div>
+        
+        <!-- Reporte de sesión -->
+        <div id="session-report">
+            <h3>REPORTE DE SESIÓN</h3>
+            <div id="report-content"></div>
+            <button class="close-btn" onclick="closeReport()">CERRAR</button>
+        </div>
+        
+        <!-- Controles -->
+        <div id="fps">FPS: 0</div>
+        
+        <div id="controls" class="hidden">
+            <div class="control-group">
+                <label class="medical-label">DISTORSIÓN DE PERCEPCIÓN</label>
+                <input type="range" id="reality-distortion" class="medical-slider" min="0" max="100" value="0">
+                <span class="value-display" id="distortion-value">ESTABLE</span>
+            </div>
+            
+            <div class="phase-buttons">
+                <button class="phase-btn active" onclick="activatePhase(0)" data-phase="normal">BASE</button>
+                <button class="phase-btn" onclick="activatePhase(1)" data-phase="tension">TENSIÓN</button>
+                <button class="phase-btn" onclick="activatePhase(2)" data-phase="crisis">CRISIS</button>
+                <button class="phase-btn" onclick="activatePhase(3)" data-phase="resolution">INTEGRACIÓN</button>
+            </div>
+            
+            <div class="action-buttons">
+                <button class="action-btn" onclick="toggleComparativeView()">VISTA COMPARATIVA</button>
+                <button class="action-btn" onclick="captureMoment()">GUARDAR MOMENTO</button>
+                <button class="action-btn" onclick="showSessionReport()">REPORTE FINAL</button>
+            </div>
+            
+            <div class="vital-signs">
+                <span class="vital">COHERENCIA: <span id="coherence">98%</span></span>
+                <span class="vital">ESTABILIDAD: <span id="stability">95%</span></span>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // Elementos DOM
+        const video = document.getElementById('video');
+        const canvas = document.getElementById('canvas');
+        const ctx = canvas.getContext('2d');
+        const normalCanvas = document.getElementById('normal-canvas');
+        const normalCtx = normalCanvas.getContext('2d');
+        const distortedCanvas = document.getElementById('distorted-canvas');
+        const distortedCtx = distortedCanvas.getContext('2d');
+        
+        const distortionSlider = document.getElementById('reality-distortion');
+        const distortionValue = document.getElementById('distortion-value');
+        const loading = document.getElementById('loading');
+        const error = document.getElementById('error');
+        const controls = document.getElementById('controls');
+        const fpsEl = document.getElementById('fps');
+        const instructions = document.getElementById('instructions');
+        const reflections = document.getElementById('reflections');
+        const comparativeView = document.getElementById('comparative-view');
+        const glitchOverlay = document.getElementById('glitch-overlay');
+        const sessionReport = document.getElementById('session-report');
+        const reportContent = document.getElementById('report-content');
+        const coherenceEl = document.getElementById('coherence');
+        const stabilityEl = document.getElementById('stability');
+        
+        // Estados y variables
+        const phases = {
+            NORMAL: 0,
+            TENSION: 1,
+            CRISIS: 2,
+            RESOLUTION: 3
+        };
+        
+        let currentPhase = phases.NORMAL;
+        let distortionActive = false;
+        let comparativeViewActive = false;
+        let animationId;
+        let stream;
+        let lastTime = 0;
+        let frameCount = 0;
+        let sessionStartTime;
+        let intensityHistory = [];
+        let phaseHistory = [];
+        let capturedMoments = [];
+        let reflectionMessages = [
+            "¿Este soy realmente yo?",
+            "El espejo miente... ¿o soy yo?",
+            "Entre la forma y la percepción hay un abismo",
+            "Mi cuerpo como territorio de batalla",
+            "Más allá de la imagen, hay presencia",
+            "La distorsión revela más que oculta",
+            "¿Dónde termina el cuerpo y empieza el yo?",
+            "En el parpadeo del sistema, vislumbro mi verdad"
+        ];
+        
+        // Inicializar cámara
+        async function initCamera() {
+            try {
+                loading.style.display = 'block';
+                error.style.display = 'none';
+                sessionStartTime = Date.now();
+                
+                const constraints = {
+                    video: { 
+                        facingMode: 'user', 
+                        width: { ideal: window.innerWidth < 768 ? 480 : 640 }, 
+                        height: { ideal: window.innerHeight < 768 ? 360 : 480 } 
+                    }
+                };
+                
+                stream = await navigator.mediaDevices.getUserMedia(constraints);
+                video.srcObject = stream;
+                
+                video.onloadedmetadata = () => {
+                    canvas.width = video.videoWidth;
+                    canvas.height = video.videoHeight;
+                    normalCanvas.width = video.videoWidth / 2;
+                    normalCanvas.height = video.videoHeight;
+                    distortedCanvas.width = video.videoWidth / 2;
+                    distortedCanvas.height = video.videoHeight;
+                    
+                    loading.style.display = 'none';
+                    instructions.style.display = 'block';
+                    video.play();
+                    render();
+                };
+            } catch (err) {
+                loading.style.display = 'none';
+                error.style.display = 'block';
+                console.error('Error cámara:', err);
+            }
+        }
+        
+        // Bucle principal de renderizado
+        function render(currentTime = 0) {
+            if (video.readyState === video.HAVE_ENOUGH_DATA) {
+                const intensity = parseInt(distortionSlider.value);
+                
+                if (comparativeViewActive) {
+                    renderComparativeView(intensity, currentTime);
+                } else {
+                    renderStandardView(intensity, currentTime);
+                }
+                
+                // Actualizar signos vitales
+                updateVitalSigns(intensity);
+                
+                // Contador FPS
+                frameCount++;
+                if (currentTime - lastTime >= 1000) {
+                    fpsEl.textContent = `FPS: ${Math.round(frameCount * 1000 / (currentTime - lastTime))}`;
+                    frameCount = 0;
+                    lastTime = currentTime;
+                }
+            }
+            animationId = requestAnimationFrame(render);
+        }
+        
+        // Vista estándar
+        function renderStandardView(intensity, time) {
+            // Dibujar video base
+            ctx.save();
+            ctx.scale(-1, 1);
+            ctx.drawImage(video, -canvas.width, 0, canvas.width, canvas.height);
+            ctx.restore();
+            
+            // Aplicar efectos si hay intensidad
+            if (intensity > 0) {
+                applyBodyDysmorphiaEffects(intensity, time * 0.001);
+            }
+        }
+        
+        // Vista comparativa
+        function renderComparativeView(intensity, time) {
+            // Lado normal
+            normalCtx.save();
+            normalCtx.scale(-1, 1);
+            normalCtx.drawImage(video, -normalCanvas.width, 0, normalCanvas.width, normalCanvas.height);
+            normalCtx.restore();
+            
+            // Lado distorsionado
+            distortedCtx.save();
+            distortedCtx.scale(-1, 1);
+            distortedCtx.drawImage(video, -distortedCanvas.width, 0, distortedCanvas.width, distortedCanvas.height);
+            distortedCtx.restore();
+            
+            // Aplicar efectos al lado distorsionado
+            if (intensity > 0) {
+                applyDistortionToCanvas(distortedCtx, distortedCanvas, intensity, time * 0.001);
+            }
+        }
+        
+        // Aplicar efectos de dismorfia corporal
+        function applyBodyDysmorphiaEffects(intensity, time) {
+            const imageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
+            const sourceData = new Uint8ClampedArray(imageData.data);
+            const destData = new Uint8ClampedArray(sourceData.length);
+            
+            const w = canvas.width;
+            const h = canvas.height;
+            const cx = w / 2, cy = h / 2;
+            
+            // Efectos basados en la fase actual
+            for (let y = 0; y < h; y++) {
+                for (let x = 0; x < w; x++) {
+                    let dx = 0, dy = 0;
+                    
+                    // Efectos por fase
+                    switch(currentPhase) {
+                        case phases.NORMAL:
+                            // Efectos sutiles
+                            dx = Math.sin(y * 0.01 + time) * (intensity / 100) * 2;
+                            dy = Math.cos(x * 0.01 + time) * (intensity / 100) * 2;
+                            break;
+                            
+                        case phases.TENSION:
+                            // Ondas más marcadas
+                            dx = Math.sin(y * 0.02 + time * 2) * (intensity / 100) * 6;
+                            dy = Math.cos(x * 0.015 + time * 3) * (intensity / 100) * 4;
+                            break;
+                            
+                        case phases.CRISIS:
+                            // Efectos más intensos y caóticos
+                            dx = Math.sin(y * 0.03 + time * 4) * (intensity / 100) * 10;
+                            dy = Math.cos(x * 0.02 + time * 5) * (intensity / 100) * 8;
+                            
+                            // Bulge en diferentes partes del cuerpo
+                            const bulgePoints = [
+                                { x: w * 0.3, y: h * 0.4 }, // mejilla izquierda
+                                { x: w * 0.7, y: h * 0.4 }, // mejilla derecha
+                                { x: w * 0.5, y: h * 0.7 }  // barbilla
+                            ];
+                            
+                            bulgePoints.forEach(point => {
+                                const dist = Math.sqrt((x - point.x)**2 + (y - point.y)**2);
+                                if (dist < 80) {
+                                    const bulgeFactor = (80 - dist) / 80 * (intensity / 100) * 0.05;
+                                    dx += (x - point.x) * bulgeFactor;
+                                    dy += (y - point.y) * bulgeFactor;
+                                }
+                            });
+                            break;
+                            
+                        case phases.RESOLUTION:
+                            // Efectos más orgánicos y fluidos
+                            dx = Math.sin(y * 0.015 + time * 1.5) * (intensity / 100) * 4;
+                            dy = Math.cos(x * 0.012 + time * 2) * (intensity / 100) * 3;
+                            
+                            // Efecto de "sanación" - menos distorsión en el centro
+                            const centerDist = Math.sqrt((x - cx)**2 + (y - cy)**2);
+                            if (centerDist < 100) {
+                                const healFactor = (100 - centerDist) / 100;
+                                dx *= (1 - healFactor * 0.7);
+                                dy *= (1 - healFactor * 0.7);
+                            }
+                            break;
+                    }
+                    
+                    // Calcular posición fuente (ajustada para espejo)
+                    let srcX = w - (x + dx);
+                    let srcY = y + dy;
+                    srcX = Math.max(0, Math.min(w - 1, srcX));
+                    srcY = Math.max(0, Math.min(h - 1, srcY));
+                    
+                    // Interpolación bilinear
+                    const x1 = Math.floor(srcX), y1 = Math.floor(srcY);
+                    const x2 = Math.min(x1 + 1, w - 1), y2 = Math.min(y1 + 1, h - 1);
+                    const fx = srcX - x1, fy = srcY - y1;
+                    
+                    const i11 = (y1 * w + x1) * 4;
+                    const i12 = (y1 * w + x2) * 4;
+                    const i21 = (y2 * w + x1) * 4;
+                    const i22 = (y2 * w + x2) * 4;
+                    
+                    for (let c = 0; c < 3; c++) {
+                        const p11 = sourceData[i11 + c];
+                        const p12 = sourceData[i12 + c];
+                        const p21 = sourceData[i21 + c];
+                        const p22 = sourceData[i22 + c];
+                        const interp = p11 * (1 - fx) * (1 - fy) + 
+                                      p12 * fx * (1 - fy) + 
+                                      p21 * (1 - fx) * fy + 
+                                      p22 * fx * fy;
+                        destData[(y * w + x) * 4 + c] = Math.round(interp);
+                    }
+                    destData[(y * w + x) * 4 + 3] = 255;
+                }
+            }
+            
+            imageData.data.set(destData);
+            ctx.putImageData(imageData, 0, 0);
+            
+            // Efectos de glitch en fases de crisis
+            if (currentPhase === phases.CRISIS && intensity > 50) {
+                applyGlitchEffect(intensity, time);
+            }
+        }
+        
+        // Aplicar distorsión a un canvas específico (para vista comparativa)
+        function applyDistortionToCanvas(context, canvasEl, intensity, time) {
+            const imageData = context.getImageData(0, 0, canvasEl.width, canvasEl.height);
+            const sourceData = new Uint8ClampedArray(imageData.data);
+            const destData = new Uint8ClampedArray(sourceData.length);
+            
+            const w = canvasEl.width;
+            const h = canvasEl.height;
+            
+            for (let y = 0; y < h; y++) {
+                for (let x = 0; x < w; x++) {
+                    let dx = 0, dy = 0;
+                    
+                    // Efectos según la fase
+                    switch(currentPhase) {
+                        case phases.NORMAL:
+                            dx = Math.sin(y * 0.01 + time) * (intensity / 100) * 2;
+                            dy = Math.cos(x * 0.01 + time) * (intensity / 100) * 2;
+                            break;
+                        case phases.TENSION:
+                            dx = Math.sin(y * 0.02 + time * 2) * (intensity / 100) * 6;
+                            dy = Math.cos(x * 0.015 + time * 3) * (intensity / 100) * 4;
+                            break;
+                        case phases.CRISIS:
+                            dx = Math.sin(y * 0.03 + time * 4) * (intensity / 100) * 10;
+                            dy = Math.cos(x * 0.02 + time * 5) * (intensity / 100) * 8;
+                            break;
+                        case phases.RESOLUTION:
+                            dx = Math.sin(y * 0.015 + time * 1.5) * (intensity / 100) * 4;
+                            dy = Math.cos(x * 0.012 + time * 2) * (intensity / 100) * 3;
+                            break;
+                    }
+                    
+                    let srcX = x + dx;
+                    let srcY = y + dy;
+                    srcX = Math.max(0, Math.min(w - 1, srcX));
+                    srcY = Math.max(0, Math.min(h - 1, srcY));
+                    
+                    const x1 = Math.floor(srcX), y1 = Math.floor(srcY);
+                    const x2 = Math.min(x1 + 1, w - 1), y2 = Math.min(y1 + 1, h - 1);
+                    const fx = srcX - x1, fy = srcY - y1;
+                    
+                    const i11 = (y1 * w + x1) * 4;
+                    const i12 = (y1 * w + x2) * 4;
+                    const i21 = (y2 * w + x1) * 4;
+                    const i22 = (y2 * w + x2) * 4;
+                    
+                    for (let c = 0; c < 3; c++) {
+                        const p11 = sourceData[i11 + c];
+                        const p12 = sourceData[i12 + c];
+                        const p21 = sourceData[i21 + c];
+                        const p22 = sourceData[i22 + c];
+                        const interp = p11 * (1 - fx) * (1 - fy) + 
+                                      p12 * fx * (1 - fy) + 
+                                      p21 * (1 - fx) * fy + 
+                                      p22 * fx * fy;
+                        destData[(y * w + x) * 4 + c] = Math.round(interp);
+                    }
+                    destData[(y * w + x) * 4 + 3] = 255;
+                }
+            }
+            
+            imageData.data.set(destData);
+            context.putImageData(imageData, 0, 0);
+        }
+        
+        // Efecto de glitch para fases de crisis
+        function applyGlitchEffect(intensity, time) {
+            // Parpadeo aleatorio
+            if (Math.random() < intensity / 500) {
+                glitchOverlay.style.opacity = '0.3';
+                setTimeout(() => {
+                    glitchOverlay.style.opacity = '0';
+                }, 50);
+            }
+            
+            // Mostrar mensajes de reflexión aleatorios
+            if (Math.random() < intensity / 800) {
+                showRandomReflection();
+            }
+        }
+        
+        // Mostrar mensaje de reflexión aleatorio
+        function showRandomReflection() {
+            const randomMessage = reflectionMessages[Math.floor(Math.random() * reflectionMessages.length)];
+            reflections.textContent = `"${randomMessage}"`;
+            reflections.classList.add('reflection-visible');
+            
+            setTimeout(() => {
+                reflections.classList.remove('reflection-visible');
+            }, 3000);
+        }
+        
+        // Actualizar signos vitales según la intensidad
+        function updateVitalSigns(intensity) {
+            const coherence = Math.max(10, 100 - intensity);
+            const stability = Math.max(15, 100 - intensity * 0.8);
+            
+            coherenceEl.textContent = `${coherence}%`;
+            stabilityEl.textContent = `${stability}%`;
+            
+            // Cambiar color según valores
+            coherenceEl.style.color = coherence > 70 ? '#00ff00' : coherence > 40 ? '#ffff00' : '#ff0000';
+            stabilityEl.style.color = stability > 70 ? '#00ff00' : stability > 40 ? '#ffff00' : '#ff0000';
+        }
+        
+        // Activar una fase específica
+        function activatePhase(phase) {
+            // Actualizar botones
+            document.querySelectorAll('.phase-btn').forEach(btn => {
+                btn.classList.remove('active');
+            });
+            event.target.classList.add('active');
+            
+            // Transición a nueva fase
+            currentPhase = phase;
+            phaseHistory.push(phase);
+            
+            // Efectos visuales de transición
+            glitchOverlay.style.opacity = '0.5';
+            setTimeout(() => {
+                glitchOverlay.style.opacity = '0';
+            }, 300);
+            
+            // Mostrar mensaje de fase
+            const phaseMessages = [
+                "SISTEMA ESTABLE - PERCEPCIÓN BASE",
+                "FASE DE TENSIÓN - DISTORSIÓN CRECIENTE",
+                "CRISIS PERCEPTIVA - COLAPSO INMINENTE",
+                "REINTEGRACIÓN - BUSCANDO EQUILIBRIO"
+            ];
+            
+            reflections.textContent = phaseMessages[phase];
+            reflections.classList.add('reflection-visible');
+            
+            setTimeout(() => {
+                reflections.classList.remove('reflection-visible');
+            }, 2000);
+        }
+        
+        // Alternar vista comparativa
+        function toggleComparativeView() {
+            comparativeViewActive = !comparativeViewActive;
+            
+            if (comparativeViewActive) {
+                canvas.style.display = 'none';
+                comparativeView.style.display = 'block';
+            } else {
+                canvas.style.display = 'block';
+                comparativeView.style.display = 'none';
+            }
+        }
+        
+        // Capturar momento significativo
+        function captureMoment() {
+            const timestamp = new Date().toLocaleTimeString();
+            const intensity = parseInt(distortionSlider.value);
+            
+            // En un entorno real, aquí se guardaría la imagen
+            // Por ahora, solo guardamos metadata
+            const momentData = {
+                timestamp: timestamp,
+                intensity: intensity,
+                phase: currentPhase,
+                userNote: prompt("¿Qué sientes en este momento? (Opcional)") || "Sin comentario"
+            };
+            
+            capturedMoments.push(momentData);
+            alert(`Momento capturado a las ${timestamp}\nIntensidad: ${intensity}%`);
+        }
+        
+        // Generar y mostrar reporte de sesión
+        function showSessionReport() {
+            const sessionDuration = Math.round((Date.now() - sessionStartTime) / 1000);
+            const avgIntensity = intensityHistory.length > 0 ? 
+                Math.round(intensityHistory.reduce((a, b) => a + b) / intensityHistory.length) : 0;
+            
+            const uniquePhases = [...new Set(phaseHistory)];
+            
+            reportContent.innerHTML = `
+                <p><strong>Duración de sesión:</strong> ${sessionDuration} segundos</p>
+                <p><strong>Intensidad promedio:</strong> ${avgIntensity}%</p>
+                <p><strong>Fases experimentadas:</strong> ${uniquePhases.join(', ')}</p>
+                <p><strong>Momentos capturados:</strong> ${capturedMoments.length}</p>
+                <div>
+                    <strong>Momentos significativos:</strong>
+                    <ul>
+                        ${capturedMoments.map(m => 
+                            `<li>${m.timestamp} - Intensidad: ${m.intensity}% - "${m.userNote}"</li>`
+                        ).join('')}
+                    </ul>
+                </div>
+            `;
+            
+            sessionReport.style.display = 'block';
+        }
+        
+        // Cerrar reporte
+        function closeReport() {
+            sessionReport.style.display = 'none';
+        }
+        
+        // Cerrar instrucciones
+        function closeInstructions() {
+            instructions.style.display = 'none';
+            controls.classList.remove('hidden');
+        }
+        
+        // Event listeners
+        distortionSlider.addEventListener('input', (e) => {
+            const value = e.target.value;
+            distortionValue.textContent = value === '0' ? 'ESTABLE' : `${value}%`;
+            intensityHistory.push(parseInt(value));
+        });
+        
+        // Ocultar controles en landscape pequeño
+        window.addEventListener('orientationchange', () => {
+            if (window.innerHeight < 500) {
+                controls.classList.add('hidden');
+                setTimeout(() => controls.classList.remove('hidden'), 1000);
+            }
+        });
+        
+        // Auto-fullscreen en móvil
+        if (/Mobi|Android/i.test(navigator.userAgent)) {
+            document.addEventListener('touchstart', () => {
+                if (!document.fullscreenElement) {
+                    document.documentElement.requestFullscreen().catch(() => {});
+                }
+            }, { once: true });
+        }
+        
+        // Limpieza al salir
+        window.addEventListener('beforeunload', () => {
+            if (stream) stream.getTracks().forEach(track => track.stop());
+            cancelAnimationFrame(animationId);
+        });
+        
+        // Iniciar la experiencia
+        initCamera();
+    </script>
+</body>
+</html>
